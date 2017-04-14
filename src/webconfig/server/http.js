@@ -29,7 +29,12 @@ class HTTP {
     this.use(serveStatic(path.resolve(`${__dirname}./../public`)));
 
     this.use(cookieParser('1234567890QWERTY'));
-    this.use(session({ secret: '1234567890QWERTY', cookie: { httpOnly: false } }));
+    this.use(session({
+      secret: '1234567890QWERTY',
+      cookie: { httpOnly: false },
+      resave: false,
+      saveUninitialized: false
+    }));
 
     this.use(bodyParser.json({ limit: '64mb' }));
     this.use(bodyParser.urlencoded({ limit: '64mb', extended: true, parameterLimit: 1000000 }));
@@ -43,19 +48,19 @@ class HTTP {
 
   clientErrorHandler = (e, req, res, next) => {
     if (req.xhr) {
-      return res.send({ code: 0, message: '请求异常' });
+      return res.render('error/error', { err: new Error('请求异常') });
     }
     return next(e);
   };
 
   errorHandler = (e, req, res, next) => {
     res.statusCode = 500;
-    res.send({ code: 500 });
+    res.render('error/error', { err: e });
   };
 
   notFoundHandler = (req, res) => {
     res.statusCode = 404;
-    res.end();
+    res.render('error/error', { err: new Error('not found') });
   };
 
   use = (...args) => {
