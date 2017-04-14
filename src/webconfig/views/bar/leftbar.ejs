@@ -1,0 +1,26 @@
+<div class="collapse navbar-collapse navbar-ex1-collapse" id="leftbar">
+    <ul class="nav navbar-nav side-nav">
+        <li id="rules">
+            <a href="/rules/list"><i class="glyphicon glyphicon-cog"></i> Crawling Rules Configure</a>
+        </li>
+        <li id="proxy">
+            <a href="/proxy/list"><i class="glyphicon glyphicon-cog"></i>Crawling Proxy Configure</a>
+        </li>
+        <li id="report">
+            <a href="/report/list"><i class="glyphicon glyphicon-cog"></i>Crawling Daily Report</a>
+        </li>
+        <li id="dbstate">
+            <a href="/dbstate"><i class="glyphicon glyphicon-cog"></i>Link DB State</a>
+        </li>
+    </ul>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#leftbar ul li').each(function (ele) {
+            $(this).click(function() {
+                $(this).addClass('active');
+            });
+        });
+    });
+</script>

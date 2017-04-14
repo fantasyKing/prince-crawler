@@ -47,6 +47,7 @@
     "modules": true
   },
   "plugins": [ // plugins has been included by airbnb
+    "ejs"
   ],
   "extends": [
     "airbnb"
