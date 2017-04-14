@@ -17,10 +17,17 @@
 
 <script type="text/javascript">
     $(document).ready(function () {
-        $('#leftbar ul li').each(function (ele) {
-            $(this).click(function() {
-                $(this).addClass('active');
-            });
+        var pathname = $(location)[0].pathname;
+        var arr = pathname.split('/').filter(function(ele) {
+            if (!ele) {
+                return false;
+            }
+            return true;
         });
+        if (arr.length) {
+            $('#' + arr[0]).addClass('my-active');
+        } else {
+            $('#rules').addClass('my-active');
+        }
     });
 </script>
