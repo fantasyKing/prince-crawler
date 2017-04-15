@@ -47,6 +47,8 @@ const TEMPLATE = {
   first_schedule: 1414938594585
 };
 
+const UPDATEDDRILlERRUlER = 'updated:driller:rule';
+
 export default new class {
   constructor() {
     this.drillerInfoDb = Redis.getClient('drillerInfoDb');
@@ -91,6 +93,7 @@ export default new class {
       throw new Error('missing domain or alias');
     }
     await this.drillerInfoDb.hmset(`driller:${domain}:${alias}`, jsondata);
+    await this.drillerInfoDb.set(UPDATEDDRILlERRUlER, new Date().getTime());
     return true;
   }
 };

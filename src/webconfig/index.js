@@ -3,7 +3,7 @@
  */
 import HTTP from './server/http';
 import simpleLogger from 'simple-logger';
-import RedisClient from './utils/redis_client_init';
+import RedisClient from './../lib/redis_client_init';
 
 global.logger = simpleLogger.getLogger('prince-crawler');
 /**

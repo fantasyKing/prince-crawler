@@ -1,4 +1,4 @@
-import Redis from './../../lib/redis';
+import Redis from './redis';
 
 const DRILLERINFODB = 'drillerInfoDb'; // 存储了抓取规则及抓取的队列
 const URLINFODB = 'urlInfoDb';
