@@ -13,4 +13,24 @@ export default new class extends Base {
       return this.fail(res)(err);
     }
   }
+
+  deleteRule = async (req, res, params) => {
+    try {
+      await ruleCtrl.deleteRule(params);
+      return this.redirect(res, 'back');
+    } catch (err) {
+      logger.error('rules.deleteRule.error =>', err);
+      return this.fail(res)(err);
+    }
+  }
+
+  editRule = async (req, res, params) => {
+    try {
+      const result = await ruleCtrl.editRule(params);
+      return this.ok(res, 'rules/edit', { rule: result });
+    } catch (err) {
+      logger.error('rules.deleteRule.error =>', err);
+      return this.fail(res)(err);
+    }
+  }
 };

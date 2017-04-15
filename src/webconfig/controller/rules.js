@@ -17,4 +17,20 @@ export default new class {
     const tbody = rules;
     return { thead, tbody };
   }
+
+  async deleteRule(params) {
+    const { id } = params;
+    const result = await this.drillerInfoDb.hclear(id);
+    if (result !== 0) {
+      return true;
+    }
+    return false;
+  }
+
+  async editRule(params) {
+    const { id } = params;
+    const result = await this.drillerInfoDb.hgetall(id);
+    logger.debug('rules.editRule.result--->', result);
+    return result;
+  }
 };
