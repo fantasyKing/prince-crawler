@@ -1,0 +1,11 @@
+<thead>
+  <tr>
+    <% if (result.thead) { %>
+      <% result.thead.forEach(function(ele) { %>
+        <% if (ele) { %>
+          <th><%= ele %></th>
+        <% } %>
+      <% }) %>
+    <% } %>
+  </tr>
+</thead>

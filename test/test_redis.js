@@ -1,14 +1,7 @@
-/**
- * Created on 7/5/16.
- */
-import HTTP from './server/http';
-import simpleLogger from 'simple-logger';
-import RedisClient from './utils/redis_client_init';
+import test from 'ava';
 
-global.logger = simpleLogger.getLogger('prince-crawler');
-/**
- * 先写成这样方便测试，实际上，起动是通过src/index.js中的命令行启动。
- */
+import RedisClient from './../src/webconfig/utils/redis_client_init';
+import Redis from './../src/lib/redis';
 
 const settings = {
   driller_info_redis_db: ['127.0.0.1', 6379, 0], // /*网址规则配置信息存储位置，最后一个数字表示redis的第几个数据库*/
@@ -34,18 +27,29 @@ const settings = {
   to_much_fail_exit: false, // /*错误太多的时候是否自动终止爬虫*/
   keep_link_relation: false // /*链接库里是否存储链接间关系*/
 };
-async function main() {
+
+test.beforeEach(async t => {
   try {
     await RedisClient.init(settings);
-    const router = require('./route');
-    const port = process.env.PORT || 5555;
-    const server = new HTTP({ port });
-    server.use(router.Router);
-    server.start();
-    logger.info(`server start at ${port}`);
-  } catch (e) {
-    logger.error('main.error =', e);
+    t.truthy(true, 'beforeEach success');
+  } catch (err) {
+    console.log('err =', err);
+    t.falsy(false, 'beforeEach error');
   }
-}
+});
 
-main();
+test('hlist', async t => {
+  try {
+    const drillerInfoDb = await Redis.getClient('drillerInfoDb');
+    const keys = await drillerInfoDb.hlist('driller*');
+    console.log('keys', keys);
+    for (const key of keys) {
+      const rule = await drillerInfoDb.hgetall(key);
+      console.log(`${key}-rule--->`, rule);
+    }
+    t.truthy(true, 'hlist success');
+  } catch (err) {
+    console.log('err =', err);
+    t.falsy(false, 'hlist error');
+  }
+});

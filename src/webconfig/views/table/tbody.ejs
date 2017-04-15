@@ -1,0 +1,13 @@
+<tbody>
+  <% result.tbody.forEach(function (obj) { %>
+    <tr>
+      <% result.thead.forEach(function(key) { %>
+        <% if (key !== 'actions') { %>
+          <td><%= obj[key] %></td>
+        <% } else { %>
+          <td><% include actions %></td>
+        <% } %>
+      <% }) %>
+    </tr>
+  <% }) %>
+</tbody>
