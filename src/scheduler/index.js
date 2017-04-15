@@ -85,10 +85,9 @@ class Scheduler extends EventEmitter {
           } else {
             this.logger.debug(`Ignore rule: ${key}, status inactive`);
           }
-
-          scheduler.driller_rules = scheduler.tmp_driller_rules; // 感觉无用的代码
         }
 
+        scheduler.driller_rules = scheduler.tmp_driller_rules;
         scheduler.priotity_list = scheduler.tmp_priority_list;
         scheduler.total_rates = scheduler.tmp_total_rates;
         this.logger.debug('priorities loaded finish');
@@ -202,7 +201,7 @@ class Scheduler extends EventEmitter {
       const scheduler = this;
       const drillerInfoDb = this.drillerInfoDb;
 
-      
+
     } catch (err) {
       this.logger.error('schedule.doScheduleExt.error', err);
     }
