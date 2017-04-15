@@ -4,18 +4,20 @@
             <div class="panel-heading">
                 <h3 class="panel-title"><%= panel_header %></h3>
             </div>
-            <div class="panel-body">
-              <form class="form-inline" id="form-rules" method="GET">
-                <div class="form-group">
-                  <label class="sr-only" for="Domain">Domain</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="Domain" placeholder="Domain">
+            <% if (panelBodyInvisible !== true) { %>
+              <div class="panel-body" id="panelBody">
+                <form class="form-inline" id="form-rules" method="GET">
+                  <div class="form-group">
+                    <label class="sr-only" for="Domain">Domain</label>
+                    <div class="input-group">
+                      <input type="text" class="form-control" id="Domain" placeholder="Domain">
+                    </div>
                   </div>
-                </div>
-                <button type="submit" class="btn btn-primary" onclick="filterFn()">filter</button>
-                <button type="submit" class="btn btn-primary" onclick="addFn()">New</button>
-              </form>
-            </div>
+                  <button type="submit" class="btn btn-primary" onclick="filterFn()">filter</button>
+                  <button type="submit" class="btn btn-primary" onclick="addFn()">New</button>
+                </form>
+              </div>
+            <% } %>
         </div>
     </div>
 </div>

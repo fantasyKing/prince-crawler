@@ -5,9 +5,7 @@ export default new class extends Base {
   list = async (req, res, params) => {
     try {
       const result = await ruleCtrl.list(params);
-      logger.debug('thead---->', result.thead);
-      logger.debug('tbody---->', result.tbody);
-      return this.ok(res, 'rules/list', { panel_header: 'Rules Actions', result });
+      return this.ok(res, 'rules/list', { panel_header: 'Rules List', result });
     } catch (err) {
       logger.error('rules.list.error =>', err);
       return this.fail(res)(err);
@@ -27,9 +25,20 @@ export default new class extends Base {
   editRule = async (req, res, params) => {
     try {
       const result = await ruleCtrl.editRule(params);
-      return this.ok(res, 'rules/edit', { rule: result });
+      return this.ok(res, 'rules/edit', { rule: result, panel_header: 'Rules edit', panelBodyInvisible: true });
     } catch (err) {
       logger.error('rules.deleteRule.error =>', err);
+      return this.fail(res)(err);
+    }
+  }
+
+  upsert = async (req, res, params) => {
+    try {
+      await ruleCtrl.upsertRule(params);
+      const list = await ruleCtrl.list();
+      return this.ok(res, 'rules/list', { panel_header: 'Rules List', result: list });
+    } catch (err) {
+      logger.error('rules.upsert.error =>', err);
       return this.fail(res)(err);
     }
   }
