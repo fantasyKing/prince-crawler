@@ -1,9 +1,12 @@
 import EventEmitter from 'events';
 import util from 'util';
 import async from 'async';
+import urlUtil from 'url';
+import querystring from 'querystring';
 
 import RedisClient from './../lib/redis_client_init';
 import Redis from './../lib/redis';
+import Util from './../lib/util';
 
 class Scheduler extends EventEmitter {
   constructor(settings) {
@@ -196,14 +199,267 @@ class Scheduler extends EventEmitter {
     }
   }
 
-  doScheduleExt = async () => {
+  doScheduleExt = async (xdriller, avg_rate, more) => {
     try {
       const scheduler = this;
       const drillerInfoDb = this.drillerInfoDb;
+      const queue_length = await drillerInfoDb.llen(`urllib:${xdriller['key']}`);
 
+      const ct = Math.ceil(avg_rate * xdriller['rate']) + more;
+      const act = queue_length >= ct ? ct : queue_length;
+      this.logger.debug(util.format('%s, rate:%d, queue length:%d, actual quantity:%d', xdriller['key'], xdriller['rate'], queue_length, act));
 
+      let count = 0;
+      let pointer = true; // current point, false means end of list
+
+      return new Promise((resolve) => {
+        async.whilst(
+        () => count < ct && pointer,
+        async (cb) => {
+          if (xdriller['rule'] === 'LIFO') {
+            const url = await drillerInfoDb.rpop(`urllib:${xdriller['key']}`);
+            pointer = url;
+            if (!url) {
+              this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
+              cb();
+            }
+            this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
+            const bol = await scheduler.checkURL(url, xdriller['interval']);
+            if (bol) count++;
+            cb();
+          } else {
+            const url = await drillerInfoDb.lpop(`urllib:${xdriller['key']}`);
+            pointer = url;
+            if (!url) {
+              this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
+              cb();
+            }
+            this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
+            const bol = await scheduler.checkURL(url, xdriller['interval']);
+            if (bol) count++;
+            cb();
+          }
+        },
+        (err) => {
+          if (err) {
+            this.logger.error('schedule.doScheduleExt.whilst.error', err);
+          }
+          let left = 0;
+          if (count < ct) left = ct - count;
+          this.logger.debug(`Schedule ${xdriller['key']}, ${count}'/'${ct}, left ${left}`);
+          resolve(left);
+        }
+      );
+      });
     } catch (err) {
       this.logger.error('schedule.doScheduleExt.error', err);
+      return null;
+    }
+  }
+
+  checkURL = async (url, interval) => {
+    try {
+      const scheduler = this;
+
+      if (typeof(url) !== 'string') {
+        this.logger.error(util.format('Invalidate url: %s', url));
+        return false;
+      }
+      const drillerInfoDb = this.drillerInfoDb;
+      const urlInfoDb = this.urlInfoDb;
+
+      const kk = crypto.createHash('md5').update(url).digest('hex');
+
+      const values = await urlInfoDb.hgetall(kk);
+
+      if (!values || Util.isEmpty(values)) {
+        this.logger.error(`${url} not exists in urlinfo'`);
+        return false;
+      }
+      if (values['trace']) {
+        const t_url = scheduler.transformLink(url, values['trace']);
+        if (t_url !== url) {
+          this.logger.debug(util.format('Transform url: %s -> %s', url, t_url));
+          return await scheduler.checkURL(t_url, interval);
+        }
+
+        const traceArr = values['trace'].split(':');
+        if (!scheduler.driller_rules[traceArr[2]] || !scheduler.driller_rules[traceArr[2]][traceArr[3]]) {
+          this.logger.warn(`${url} driller info expired, update it`);
+
+          const d_r = await scheduler.detectLink(url);
+
+          if (d_r) {
+            await urlInfoDb.hset(kk, 'trace', `urllib:${d_r}`);
+            this.logger.debug(`${url} trace changed ${values['trace']} -> urllib:${d_r}`);
+            return await scheduler.checkURL(url, interval);
+          }
+          this.logger.error(`no rule match ${url}`);
+          return false;
+        }
+      }
+
+      const status = values['status'];
+      // const records = values['records'] ? JSON.parse(values['records']) : [];
+      const last = values['last'] ? parseInt(values['last']) : 0;
+      const version = values['version'] ? parseInt(values['version']) : 0;
+      const type = values['type'];
+
+      if (status !== 'crawled_failure' && status !== 'hit') {
+        let real_interval = interval * 1000;
+        if (status === 'crawling' || status === 'schedule') {
+          real_interval = 60 * 60 * 1000;
+        }
+
+        if (status === 'crawled_finish' && type === 'branch' && version > last){
+          real_interval = 0;
+          this.logger.debug(`${url} got new version after last crawling`);
+        }
+
+        if ((new Date()).getTime() - last < real_interval) {
+          this.logger.debug(util.format('ignore %s, last event time:%s, status:%s', url, last, status));
+          return false;
+        }
+        this.logger.debug(`release lock: ${url}`);
+      }
+
+      const bol = await scheduler.updateLinkState(url, 'schedule', false);
+
+      if (bol) {
+        await drillerInfoDb.rpush('queue:scheduled:all', url);
+        logger.info(`Append ${url} to queue successful`);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      this.logger.error('schedule.checkURL.error');
+      return false;
+    }
+  }
+
+  transformLink = async (link, urllib) => {
+    let final_link = link;
+    const urlobj = urlUtil.parse(link);
+    const domain = this.__getTopLevelDomain(urlobj['hostname']);
+
+    const drill_alias = urllib.slice(urllib.lastIndexOf(':') + 1);
+
+    if (this.driller_rules[domain] && this.driller_rules[domain][drill_alias]) {
+      let driller_rule = this.driller_rules[domain][drill_alias];
+
+      if (typeof(driller_rule) !== 'object') driller_rule = JSON.parse(driller_rule);
+
+      if (driller_rule['id_parameter']) {
+        const id_parameter = JSON.parse(driller_rule['id_parameter']);
+
+        if (Array.isArray(id_parameter) && id_parameter.length > 0) {
+          const parameters = querystring.parse(urlobj.query);
+          const new_parameters = {};
+
+          for (let x = 0; x < id_parameter.length; x++) {
+            const param_name = id_parameter[x];
+            if (x === 0 && param_name === '#') break;
+            if (parameters.hasOwnProperty(param_name)) new_parameters[param_name] = parameters[param_name];
+          }
+
+          urlobj.search = querystring.stringify(new_parameters);
+          final_link = urlUtil.format(urlobj);
+        }
+      }
+    }
+
+    return final_link;
+  }
+
+  __getTopLevelDomain = (domain) => {
+    const arr = domain.split('.');
+    if (arr.length <= 2) return domain;
+    return arr.slice(1).join('.');
+  }
+
+  detectLink = async (link) => {
+    const urlobj = urlUtil.parse(link);
+    let result = '';
+    const domain = this.__getTopLevelDomain(urlobj['hostname']);
+
+    if (this.driller_rules[domain] !== undefined) {
+      const alias = this.driller_rules[domain];
+
+      const domain_rules = Object.keys(alias).sort((a, b) => alias[b]['url_pattern'].length - alias[a]['url_pattern'].length);
+
+      for (let i = 0; i < domain_rules.length; i++) {
+        const current_rule = domain_rules[i];
+        const url_pattern = alias[current_rule]['url_pattern'];
+        const patt = new RegExp(url_pattern);
+        if (patt.test(link)) {
+          result = `driller:${domain}:${current_rule}`;
+          break;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  updateLinkState = async (link, state, version) => {
+    try {
+      const scheduler = this;
+      const urlhash = crypto.createHash('md5').update(`${link}`).digest('hex');
+
+      const urlInfoDb = this.urlInfoDb;
+
+      const link_info = await urlInfoDb.hgetall();
+
+      if (link_info && !Util.isEmpty(link_info)) {
+        const t_record = link_info['records'];
+        let records = [];
+
+        if (t_record !== '' && t_record !== '[]') {
+          try {
+            records = JSON.parse(t_record);
+          } catch (e) {
+            this.logger.error(`${t_record} JSON parse error: ${e}`);
+          }
+        }
+        records.push(state);
+        const valueDict = {
+          records: JSON.stringify(records.length > 3 ? records.slice(-3) : records),
+          last: (new Date()).getTime(),
+          status: state
+        };
+
+        if (version) {
+          valueDict['version'] = version; // set version
+        }
+        await urlInfoDb.hmset(urlhash, valueDict);
+        logger.debug(`update state of link(${link}) success: ${state}`);
+        return true;
+      }
+      let trace = scheduler.detectLink(link);
+
+      if (trace !== '') {
+        trace = `urllib:${trace}`;
+        const urlinfo = {
+          url: link,
+          trace,
+          referer: '',
+          create: (new Date()).getTime(),
+          records: JSON.stringify([]),
+          last: (new Date()).getTime(),
+          state
+        };
+
+        if (version) urlinfo['version'] = version; // update version
+
+        await urlInfoDb.hmset(urlhash, urlinfo);
+
+        this.logger.debug(`save new url info: ${link}`);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      this.logger.error(`update state of link (${link}) fail: $${err}`);
+      return false;
     }
   }
 }
