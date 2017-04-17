@@ -144,7 +144,8 @@ class Scheduler extends EventEmitter {
           // -------------------------------
           const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
           left = more;
-          cb();
+          logger.debug('doSchedule.after.doScheduleExt.left', left);
+          return cb();
         },
         (err) => {
           if (err) this.logger.error('schedule.doSchedule.async.whilst error =', err);
@@ -201,63 +202,57 @@ class Scheduler extends EventEmitter {
     }
   }
 
-  doScheduleExt = async (xdriller, avg_rate, more) => {
-    try {
-      const scheduler = this;
-      const drillerInfoDb = this.drillerInfoDb;
-      const queue_length = await drillerInfoDb.llen(`urllib:${xdriller['key']}`);
+  doScheduleExt = async (xdriller, avg_rate, more) => new Promise(async (resolve) => {
+    const scheduler = this;
+    const drillerInfoDb = this.drillerInfoDb;
+    const queue_length = await drillerInfoDb.llen(`urllib:${xdriller['key']}`);
 
-      const ct = Math.ceil(avg_rate * xdriller['rate']) + more;
-      const act = queue_length >= ct ? ct : queue_length;
-      this.logger.debug(util.format('%s, rate:%d, queue length:%d, actual quantity:%d', xdriller['key'], xdriller['rate'], queue_length, act));
+    const ct = Math.ceil(avg_rate * xdriller['rate']) + more;
+    const act = queue_length >= ct ? ct : queue_length;
+    this.logger.debug(util.format('%s, rate:%d, queue length:%d, actual quantity:%d', xdriller['key'], xdriller['rate'], queue_length, act));
 
-      let count = 0;
-      let pointer = true; // current point, false means end of list
+    let count = 0;
+    let pointer = true; // current point, false means end of list
 
-      return new Promise((resolve) => {
-        async.whilst(
-        () => count < ct && pointer,
-        async (cb) => {
-          if (xdriller['rule'] === 'LIFO') {
-            const url = await drillerInfoDb.rpop(`urllib:${xdriller['key']}`);
-            pointer = url;
-            if (!url) {
-              this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
-              cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
-            }
-            this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
-            const bol = await scheduler.checkURL(url, xdriller['interval']);
-            if (bol) count++;
-            cb();
-          } else {
-            const url = await drillerInfoDb.lpop(`urllib:${xdriller['key']}`);
-            pointer = url;
-            if (!url) {
-              this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
-              cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
-            }
-            this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
-            const bol = await scheduler.checkURL(url, xdriller['interval']);
-            if (bol) count++;
-            cb();
+    async.whilst(
+      () => count < ct && pointer,
+      async (cb) => {
+        if (xdriller['rule'] === 'LIFO') {
+          const url = await drillerInfoDb.rpop(`urllib:${xdriller['key']}`);
+          pointer = url;
+          this.logger.debug('doScheduleExt.before.checkURL.url', url, typeof url);
+          if (!url || url === 'null') {
+            this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
+            return cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
           }
-        },
-        (err) => {
-          if (err) {
-            this.logger.error('schedule.doScheduleExt.whilst.error', err);
-          }
-          let left = 0;
-          if (count < ct) left = ct - count;
-          this.logger.debug(`Schedule ${xdriller['key']}, ${count}'/'${ct}, left ${left}`);
-          resolve(left);
+          this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
+          const bol = await scheduler.checkURL(url, xdriller['interval']);
+          if (bol) count++;
+          return cb();
         }
-      );
-      });
-    } catch (err) {
-      this.logger.error('schedule.doScheduleExt.error', err);
-      return null;
-    }
-  }
+        const url = await drillerInfoDb.lpop(`urllib:${xdriller['key']}`);
+        pointer = url;
+        if (!url || url === 'null') {
+          this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
+          return cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
+        }
+        this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
+        const bol = await scheduler.checkURL(url, xdriller['interval']);
+        if (bol) count++;
+        return cb();
+      },
+      (err) => {
+        if (err) {
+          this.logger.error('schedule.doScheduleExt.whilst.error', err);
+          // reject(err);
+        }
+        let left = 0;
+        if (count < ct) left = ct - count;
+        this.logger.debug(`Schedule ${xdriller['key']}, ${count}'/'${ct}, left ${left}`);
+        resolve(left);
+      }
+    );
+  });
 
   checkURL = async (url, interval) => {
     try {
