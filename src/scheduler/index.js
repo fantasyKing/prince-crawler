@@ -138,8 +138,9 @@ class Scheduler extends EventEmitter {
         async (cb) => {
           const xdriller = scheduler.priotity_list[index];
           // --check reschedule-------------
+          this.logger.debug('doSchedule.async.whilst.first_schedule--->', (new Date()).getTime() - xdriller['first_schedule'] - xdriller['interval'] * 1000);
           if ((new Date()).getTime() - xdriller['first_schedule'] >= xdriller['interval'] * 1000) {
-            scheduler.reSchedule(xdriller, index);
+            scheduler.reSchedule(xdriller, index); // 
           }
           // -------------------------------
           const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
@@ -295,7 +296,9 @@ class Scheduler extends EventEmitter {
           return false;
         }
       }
-
+      /**
+       * 判断url是否可以重新进入抓取队列
+       */
       const status = values['status'];
       // const records = values['records'] ? JSON.parse(values['records']) : [];
       const last = values['last'] ? parseInt(values['last']) : 0;
@@ -313,7 +316,7 @@ class Scheduler extends EventEmitter {
           this.logger.debug(`${url} got new version after last crawling`);
         }
 
-        if ((new Date()).getTime() - last < real_interval) {
+        if ((new Date()).getTime() - last < real_interval) { // 一分钟内不再重复拉取同一个url
           this.logger.debug(util.format('ignore %s, last event time:%s, status:%s', url, last, status));
           return false;
         }
