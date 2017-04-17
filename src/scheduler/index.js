@@ -76,7 +76,7 @@ class Scheduler extends EventEmitter {
             scheduler.tmp_driller_rules[rule['domain']][rule['alias']] = rule;
 
             const rate = (scheduler.max_weight + parseFloat(rule['weight'])) / parseFloat(rule['priority']);
-            scheduler.tmp_total_rates += rate;
+            scheduler.tmp_total_rates += rate; // rate越大优先级越高
 
             scheduler.tmp_priority_list.push({
               key,
@@ -120,7 +120,7 @@ class Scheduler extends EventEmitter {
 
       const queue_length = await drillerInfoDb.llen('queue:scheduled:all');
 
-      let balance = scheduler.settings['schedule_quantity_limitation'] - queue_length;
+      let balance = scheduler.settings['schedule_quantity_limitation'] - queue_length; // 调度器给爬虫的最大网址待抓取数量
       if (balance < 0) balance = 0;
 
       const avg_rate = balance / scheduler.total_rates;
@@ -144,7 +144,7 @@ class Scheduler extends EventEmitter {
           // -------------------------------
           const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
           left = more;
-          logger.debug('doSchedule.after.doScheduleExt.left', left);
+          this.logger.debug('doSchedule.after.doScheduleExt.left', left);
           return cb();
         },
         (err) => {
@@ -164,7 +164,7 @@ class Scheduler extends EventEmitter {
     try {
       const scheduler = this;
       const drillerInfoDb = this.drillerInfoDb;
-      this.logger.debug(`reschedule${driller['key']}`);
+      this.logger.debug(`reschedule:${driller['key']}`);
 
       const links = [];
 
@@ -196,7 +196,7 @@ class Scheduler extends EventEmitter {
       this.priotity_list[index]['first_schedule'] = this.schedule_version;
 
       drillerInfoDb.hset(driller['key'], 'first_schedule', this.schedule_version);
-      this.logger(`update first schedule time for ${driller['key']} successful`);
+      this.logger.debug(`update first schedule time for ${driller['key']} successful`);
     } catch (err) {
       this.logger.error('schedule.reSchedule.error =', err);
     }
@@ -223,7 +223,7 @@ class Scheduler extends EventEmitter {
           this.logger.debug('doScheduleExt.before.checkURL.url', url, typeof url);
           if (!url || url === 'null') {
             this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
-            return cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
+            return cb(new Error(`urllib:${xdriller['key']} is empty`));
           }
           this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
           const bol = await scheduler.checkURL(url, xdriller['interval']);
@@ -234,7 +234,7 @@ class Scheduler extends EventEmitter {
         pointer = url;
         if (!url || url === 'null') {
           this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
-          return cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
+          return cb(new Error(`urllib:${xdriller['key']} is empty`));
         }
         this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
         const bol = await scheduler.checkURL(url, xdriller['interval']);
@@ -248,7 +248,7 @@ class Scheduler extends EventEmitter {
         }
         let left = 0;
         if (count < ct) left = ct - count;
-        this.logger.debug(`Schedule ${xdriller['key']}, ${count}'/'${ct}, left ${left}`);
+        this.logger.debug(`Schedule ${xdriller['key']}, ${count}/${ct}, left ${left}`);
         resolve(left);
       }
     );
@@ -324,7 +324,7 @@ class Scheduler extends EventEmitter {
 
       if (bol) {
         await drillerInfoDb.rpush('queue:scheduled:all', url);
-        logger.info(`Append ${url} to queue successful`);
+        this.logger.info(`Append ${url} to queue successful`);
         return true;
       }
       return false;
@@ -429,7 +429,7 @@ class Scheduler extends EventEmitter {
           valueDict['version'] = version; // set version
         }
         await urlInfoDb.hmset(urlhash, valueDict);
-        logger.debug(`update state of link(${link}) success: ${state}`);
+        this.logger.debug(`update state of link(${link}) success: ${state}`);
         return true;
       }
       let trace = scheduler.detectLink(link);
