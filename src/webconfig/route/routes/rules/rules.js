@@ -27,7 +27,7 @@ export default new class extends Base {
       const result = await ruleCtrl.editRule(params);
       return this.ok(res, 'rules/edit', { rule: result, panel_header: 'Rules edit', panelBodyInvisible: true });
     } catch (err) {
-      logger.error('rules.deleteRule.error =>', err);
+      logger.error('rules.editRule.error =>', err);
       return this.fail(res)(err);
     }
   }

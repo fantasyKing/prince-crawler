@@ -3,6 +3,7 @@ import util from 'util';
 import async from 'async';
 import urlUtil from 'url';
 import querystring from 'querystring';
+import crypto from 'crypto';
 
 import RedisClient from './../lib/redis_client_init';
 import Redis from './../lib/redis';
@@ -10,6 +11,7 @@ import Util from './../lib/util';
 
 class Scheduler extends EventEmitter {
   constructor(settings) {
+    super();
     this.settings = settings;
     this.logger = settings.logger;
     this.priotities_updated = 0;
@@ -32,7 +34,7 @@ class Scheduler extends EventEmitter {
 
   assembly = async () => {
     try {
-      await RedisClient.init();
+      await RedisClient.init(this.settings);
       this.drillerInfoDb = Redis.getClient('drillerInfoDb');
       this.urlInfoDb = Redis.getClient('urlInfoDb');
       this.refreshPriotities();
@@ -51,7 +53,7 @@ class Scheduler extends EventEmitter {
 
       if (this.priotities_updated !== parseInt(drillerRuleUpdateTime)) {
         this.logger.debug('driller rules is changed');
-        const rules = drillerInfoDb.hlist('driller:*');
+        const rules = await drillerInfoDb.hlist('driller:*');
         scheduler.tmp_driller_rules = {};
         scheduler.tmp_priority_list = []; // 优先级顺序
         scheduler.tmp_total_rates = 0;
@@ -221,7 +223,7 @@ class Scheduler extends EventEmitter {
             pointer = url;
             if (!url) {
               this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
-              cb();
+              cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
             }
             this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
             const bol = await scheduler.checkURL(url, xdriller['interval']);
@@ -232,7 +234,7 @@ class Scheduler extends EventEmitter {
             pointer = url;
             if (!url) {
               this.logger.debug(`error or end of list, urllib:${xdriller['key']}`);
-              cb();
+              cb(new Error(`error or end of list, urllib:${xdriller['key']}`));
             }
             this.logger.debug(`fetch url ${url} from urllib:${xdriller['key']}`);
             const bol = await scheduler.checkURL(url, xdriller['interval']);

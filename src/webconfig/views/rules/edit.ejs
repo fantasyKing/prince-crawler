@@ -3,7 +3,7 @@
   <div class="container-fluid">
     <% include ../page_header %>
     <form class="form-group" method="post" action="/rules/upsert" id="form"  onsubmit="return checkform()">
-      <textarea id="jsondata" name="jsondata" style="display:none"><%=JSON.stringify(rule)%></textarea>
+      <textarea id="jsondata" name="jsondata" style="display:none"><%= JSON.stringify(rule) %></textarea>
       <div id="jsoneditor"></div>
       <p>
       <input type="submit" name="submit" id="submit" value="Submit"/>

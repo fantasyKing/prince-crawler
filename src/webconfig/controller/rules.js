@@ -80,7 +80,25 @@ export default new class {
     const { id } = params;
     if (id) {
       const result = await this.drillerInfoDb.hgetall(id);
-      return result;
+      logger.debug('controller.editRule.result--->', result);
+      const dataobj = TEMPLATE;
+      const numberPattern = new RegExp('^-?[0-9]+$');
+      for (const i of Object.keys(result)) {
+        if (result.hasOwnProperty(i)) {
+          if (typeof(result[i]) === 'string' && (result[i].charAt(0) === '{' || result[i].charAt(0) === '[')) {
+            dataobj[i] = JSON.parse(result[i]);
+          } else if (numberPattern.test(result[i])) {
+            dataobj[i] = parseInt(result[i]);
+          } else if (result[i] === 'true') {
+            dataobj[i] = true;
+          } else if (result[i] === 'false') {
+            dataobj[i] = false;
+          } else {
+            dataobj[i] = result[i];
+          }
+        }
+      }
+      return dataobj;
     }
     return TEMPLATE;
   }
@@ -89,10 +107,23 @@ export default new class {
     let { jsondata } = params;
     jsondata = JSON.parse(jsondata);
     const { domain, alias } = jsondata;
+    logger.debug('controller.rules.upsertRule.jsondata--->', jsondata);
     if (!domain || !alias) {
       throw new Error('missing domain or alias');
     }
-    await this.drillerInfoDb.hmset(`driller:${domain}:${alias}`, jsondata);
+
+    const dataobj = {};
+    for (const i of Object.keys(jsondata)) {
+      if (jsondata.hasOwnProperty(i)) {
+        if (typeof(jsondata[i]) === 'object') {
+          dataobj[i] = JSON.stringify(jsondata[i]);
+        } else {
+          dataobj[i] = jsondata[i];
+        }
+      }
+    }
+    logger.debug('controller.rules.upsertRule.brfore.jsondata--->', dataobj);
+    await this.drillerInfoDb.hmset(`driller:${domain}:${alias}`, dataobj);
     await this.drillerInfoDb.set(UPDATEDDRILlERRUlER, new Date().getTime());
     return true;
   }
