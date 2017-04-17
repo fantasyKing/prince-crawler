@@ -308,7 +308,7 @@ class Scheduler extends EventEmitter {
           real_interval = 60 * 60 * 1000;
         }
 
-        if (status === 'crawled_finish' && type === 'branch' && version > last){
+        if (status === 'crawled_finish' && type === 'branch' && version > last) {
           real_interval = 0;
           this.logger.debug(`${url} got new version after last crawling`);
         }
