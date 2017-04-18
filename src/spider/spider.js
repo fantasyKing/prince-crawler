@@ -162,52 +162,52 @@ export default class Spider {
 
       if (urlinfo !== null) {
         spider.spiderCore.emit('new_url_queue', urlinfo);
-      } else {
-        this.logger.error(`${link} can not match any driller rule, ignore it.`);
-        return await spider.getUrlQueue();
+        return true;
       }
-    } else {
-      if (!link_info['trace']) {
-        this.logger.warn(`${link}, url info is incomplete`);
-        return await spider.getUrlQueue();
-      }
-      const drillerinfo = await spider.getDrillerRules(link_info['trace']);
-
-      if (drillerinfo === null) {
-        await urlInfoDb.del(linkhash);
-        this.logger.warn(`${link}, has dirty driller info! clean it`);
-        const urlinfo = await spider.wrapLink(link);
-        if (urlinfo !== null) {
-          spider.spiderCore.emit('new_url_queue', urlinfo);
-        } else {
-          this.logger.error(`Cleaned dirty driller info for ${link}, but can not match any driller rule right now, ignore it.`);
-          return await spider.getUrlQueue();
-        }
-      }
-      const urlinfo = {
-        url: link,
-        version: parseInt(link_info['version']),
-        type: drillerinfo['type'],
-        format: drillerinfo['format'],
-        encoding: drillerinfo['encoding'],
-        referer: link_info['referer'],
-        url_pattern: drillerinfo['url_pattern'],
-        urllib: link_info['trace'],
-        save_page: drillerinfo['save_page'],
-        cookie: drillerinfo['cookie'],
-        jshandle: drillerinfo['jshandle'],
-        inject_jquery: drillerinfo['inject_jquery'],
-        drill_rules: drillerinfo['drill_rules'],
-        drill_relation: link_info['drill_relation'],
-        validation_keywords: drillerinfo['validation_keywords'] && drillerinfo['validation_keywords'] !== 'undefined' ? drillerinfo['validation_keywords'] : '',
-        script: drillerinfo['script'],
-        navigate_rule: drillerinfo['navigate_rule'],
-        stoppage: drillerinfo['stoppage'],
-        start_time: (new Date()).getTime()
-      };
-      this.logger.info(`new url: '+${link}`);
-      spider.spiderCore.emit('new_url_queue', urlinfo);
+      this.logger.error(`${link} can not match any driller rule, ignore it.`);
+      return await spider.getUrlQueue();
     }
+    if (!link_info['trace']) {
+      this.logger.warn(`${link}, url info is incomplete`);
+      return await spider.getUrlQueue();
+    }
+    const drillerinfo = await spider.getDrillerRules(link_info['trace']);
+
+    if (drillerinfo === null) {
+      await urlInfoDb.del(linkhash);
+      this.logger.warn(`${link}, has dirty driller info! clean it`);
+      const urlinfo = await spider.wrapLink(link);
+      if (urlinfo !== null) {
+        spider.spiderCore.emit('new_url_queue', urlinfo);
+      } else {
+        this.logger.error(`Cleaned dirty driller info for ${link}, but can not match any driller rule right now, ignore it.`);
+        return await spider.getUrlQueue();
+      }
+    }
+    const urlinfo = {
+      url: link,
+      version: parseInt(link_info['version']),
+      type: drillerinfo['type'],
+      format: drillerinfo['format'],
+      encoding: drillerinfo['encoding'],
+      referer: link_info['referer'],
+      url_pattern: drillerinfo['url_pattern'],
+      urllib: link_info['trace'],
+      save_page: drillerinfo['save_page'],
+      cookie: drillerinfo['cookie'],
+      jshandle: drillerinfo['jshandle'],
+      inject_jquery: drillerinfo['inject_jquery'],
+      drill_rules: drillerinfo['drill_rules'],
+      drill_relation: link_info['drill_relation'],
+      validation_keywords: drillerinfo['validation_keywords'] && drillerinfo['validation_keywords'] !== 'undefined' ? drillerinfo['validation_keywords'] : '',
+      script: drillerinfo['script'],
+      navigate_rule: drillerinfo['navigate_rule'],
+      stoppage: drillerinfo['stoppage'],
+      start_time: (new Date()).getTime()
+    };
+    this.logger.info(`new url: '+${link}`);
+    spider.spiderCore.emit('new_url_queue', urlinfo);
+    return true;
   }
 
   checkQueue = async (spider) => {
@@ -218,15 +218,14 @@ export default class Spider {
         this.logger.debug(`Check queue, length: ${spider.queue_length}`);
         return spider.queue_length < spider.spiderCore.settings['spider_concurrency'] && breakTt !== true;
       },
-      (cb) => {
-        spider.getUrlQueue((bol) => {
-          if (bol === true) {
-            spider.queue_length++;
-          } else {
-            breakTt = true;
-          }
-          cb();
-        });
+      async (cb) => {
+        const bol = await spider.getUrlQueue();
+        if (bol === true) {
+          spider.queue_length++;
+        } else {
+          breakTt = true;
+        }
+        cb();
       },
       (err) => {
         if (err) logger.error('Exception in check queue.');
