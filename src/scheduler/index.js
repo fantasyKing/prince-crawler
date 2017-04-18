@@ -140,7 +140,7 @@ class Scheduler extends EventEmitter {
           // --check reschedule-------------
           this.logger.debug('doSchedule.async.whilst.first_schedule--->', (new Date()).getTime() - xdriller['first_schedule'] - xdriller['interval'] * 1000);
           if ((new Date()).getTime() - xdriller['first_schedule'] >= xdriller['interval'] * 1000) {
-            scheduler.reSchedule(xdriller, index); // 
+            scheduler.reSchedule(xdriller, index);
           }
           // -------------------------------
           const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
