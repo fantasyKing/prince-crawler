@@ -281,7 +281,7 @@ export default class Spider {
  */
   wrapLink = async (link) => {
     let linkinfo = null;
-    const driller = await this.detectLink(link);
+    const driller = await this.detectLink(link); // 获取link 属于的driller rule
 
     if (driller !== '') {
       const driller_arr = driller.split(':');
