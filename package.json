@@ -11,7 +11,7 @@
     "start": "babel-node",
     "webconfig": "babel-node ./src/index.js --i example --a config --p 8888",
     "schedule": "babel-node ./src/index.js --i example --a schedule --p 8888",
-    "test": "babel-node ./src/index.js --i example --a test --l 'http://www.sovxin.com/t_jiankangshenghuo_45.html'"
+    "test": "babel-node ./src/index.js --i example --a test --l 'http://www.sovxin.com/weixin_68901.html'"
   },
   "keywords": [
     "spider"

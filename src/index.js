@@ -3,6 +3,7 @@ import simpleLogger from 'simple-logger';
 
 import Scheduler from './scheduler/index';
 import WebConfig from './webconfig/';
+import Spider from './spider';
 
 const userArgv = require('optimist')
 .usage('Usage: $0 -i [instance name] -a [crawl|test|config|proxy|schedule]  -p [num] -l[url] -h')
@@ -77,7 +78,7 @@ const testUrl = function () {
     const logger = simpleLogger.getLogger(`test-${options['i']}`);
     logger.setLevel(log_level);
     settings['logger'] = logger;
-    const spider = new (require('./spider'))(settings);
+    const spider = new Spider(settings);
 
     spider.test(options['l']);
   }

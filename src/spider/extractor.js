@@ -7,7 +7,7 @@ import cheerio from 'cheerio';
 import Util from './../lib/util';
 
 export default class Extractor {
-  construcor(spiderCore) {
+  constructor(spiderCore) {
     this.spiderCore = spiderCore;
     this.logger = spiderCore.settings.logger;
     this.cumulative_failure = 0;
@@ -25,7 +25,7 @@ export default class Extractor {
     const links = [];
 
     for (let i = 0; i < rules.length; i++) {
-      $(rules[i]).each((index, elem) => {
+      $(rules[i]).each(function (index, elem) {
         if (elem['name'] === 'img') {
           links.push($(this).attr('src'));
         } else {
@@ -260,7 +260,7 @@ export default class Extractor {
               if (!Util.isEmpty(result_arr)) data[key] = result_arr;
             } else {
               try {
-                const tmp_result = this.cssSelector(baser, rule['expression'], pick, rule['index']);
+                const tmp_result = await this.cssSelector(baser, rule['expression'], pick, rule['index']);
                 if (tmp_result && !Util.isEmpty(tmp_result)) data[key] = tmp_result;
               } catch (e) {
                 this.logger.error(`${urlLink} extract field ${key} error: ${e}`);
@@ -333,7 +333,7 @@ export default class Extractor {
     if (typeof(tmp_val) === 'object') {
       if (real_index >= 0) {
         const val = tmp_val.eq(real_index);
-        return this.cssSelectorPicker(val, pick);
+        return await this.cssSelectorPicker(val, pick);
       }
       let arrayResult = [];
       for (let i = 0; i < tmp_val.length; i++) {
