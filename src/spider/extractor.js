@@ -88,7 +88,7 @@ export default class Extractor {
         const patt = new RegExp(url_pattern);
 
         if (patt.test(link)) {
-          result = [`driller:${domain}+':${current_rule}`, alias[current_rule]];
+          result = [`driller:${domain}:${current_rule}`, alias[current_rule]];
           break;
         }
       }
@@ -126,7 +126,7 @@ export default class Extractor {
           for (let x = 0; x < id_parameter.length; x++) {
             const param_name = id_parameter[x];
             if (x === 0 && param_name === '#') break;
-            if (parameters.hasOwnProperty(param_name))new_parameters[param_name] = parameters[param_name];
+            if (parameters.hasOwnProperty(param_name)) new_parameters[param_name] = parameters[param_name];
           }
 
           urlobj.search = querystring.stringify(new_parameters);
@@ -142,6 +142,7 @@ export default class Extractor {
         linkobj[key] = _.uniq(linkobj[key]);
       }
     }
+
     return linkobj;
   }
 
