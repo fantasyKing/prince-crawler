@@ -2,7 +2,6 @@
  * Created on 5/11/16.
  */
 import Redis from 'ioredis';
-import _ from 'lodash';
 
 class redisClientExtend extends Redis {
   constructor(name) {

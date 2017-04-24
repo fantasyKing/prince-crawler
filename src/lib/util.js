@@ -1,7 +1,7 @@
 export default new class {
   arrayUnique(arr) {
     return arr.reduce((p, c) => {
-      if (p.indexOf(c) < 0)p.push(c);
+      if (p.indexOf(c) < 0) p.push(c);
       return p;
     }, []);
   }
