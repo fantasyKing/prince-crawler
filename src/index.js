@@ -69,12 +69,29 @@ const configService = function () {
   webConfig.start();
 };
 
+/**
+ * test url
+ */
+const testUrl = function () {
+  if (options['l'] !== '') {
+    const logger = simpleLogger.getLogger(`test-${options['i']}`);
+    logger.setLevel(log_level);
+    settings['logger'] = logger;
+    const spider = new (require('./spider'))(settings);
+
+    spider.test(options['l']);
+  }
+};
+
 switch (options['a']) {
   case 'config':
     configService();
     break;
   case 'schedule':
     schedule();
+    break;
+  case 'test':
+    testUrl();
     break;
   default:
     userArgv.showHelp();

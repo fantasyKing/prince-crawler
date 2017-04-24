@@ -14,6 +14,7 @@ export default class Spider {
     this.driller_rules_updated = 0;
     this.driller_rules = {};
     this.logger = spiderCore.settings.logger;
+    this.settings = spiderCore.settings;
   }
 
   assembly = async () => {
@@ -61,7 +62,7 @@ export default class Spider {
     if (self.driller_rules_updated !== parseInt(value)) {
       this.logger.info('driller rules is changed');
 
-      const rules = await drillerInfoDb.hlist('driller:*');
+      const rules = await drillerInfoDb.hlist('driller:*'); // 获取所有的抓取规则
 
       self.tmp_driller_rules = {};
       self.tmp_driller_rules_length = rules.length;

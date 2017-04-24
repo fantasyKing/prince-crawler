@@ -8,7 +8,8 @@ export default class PipeLine {
     return true;
   }
 
-  save = async () => {
+  save = async (extracted_info) => {
+    this.logger.debug('pipeline.save.extracted_info---->', extracted_info);
     return true;
   }
 

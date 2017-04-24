@@ -6,6 +6,7 @@ import request from './../lib/http_request';
 
 export default class DownLoader extends EventEmitter {
   constructor(spiderCore) {
+    super();
     this.spiderCore = spiderCore;
     this.proxyList = [];
     this.timeout_count = 0;

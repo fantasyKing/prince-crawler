@@ -4,6 +4,8 @@ import util from 'util';
 import Util from './../lib/util';
 import Spider from './spider';
 import DownLoder from './downloader';
+import Extractor from './extractor';
+import Pipeline from './pipeline';
 
 export default class SpiderCore extends EventEmitter {
   constructor(settings) {
@@ -11,9 +13,9 @@ export default class SpiderCore extends EventEmitter {
     this.settings = settings;
     this.spider = new Spider(this);
     this.downloader = new DownLoder(this);
-    this.extractor = '';
-    this.pipeline = '';
-    this.spider_extend = '';
+    this.extractor = new Extractor(this);
+    this.pipeline = new Pipeline(this);
+    this.spider_extend = {};
     this.logger = settings.logger;
   }
 
