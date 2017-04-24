@@ -9,6 +9,7 @@ export default class PipeLine {
   }
 
   save = async (extracted_info) => {
+    delete extracted_info.content;
     this.logger.debug('pipeline.save.extracted_info---->', extracted_info);
     return true;
   }

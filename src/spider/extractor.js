@@ -151,7 +151,7 @@ export default class Extractor {
    * @returns string
    */
   getDrillRelation = async ($, crawl_info) => {
-    const rule = this.spiderCore.spider.getDrillerRule(crawl_info['origin']['urllib'], 'drill_relation');
+    const rule = await this.spiderCore.spider.getDrillerRule(crawl_info['origin']['urllib'], 'drill_relation');
     let origin_relation = crawl_info['origin']['drill_relation'];
 
     if (!origin_relation) origin_relation = '*';
@@ -169,7 +169,7 @@ export default class Extractor {
           break;
         case 'css':
         default:
-          new_relation = this.cssSelector($.root(), rule['expression'], rule['pick'], rule['index']);
+          new_relation = await this.cssSelector($.root(), rule['expression'], rule['pick'], rule['index']);
           break;
       }
     }
