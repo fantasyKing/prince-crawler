@@ -83,7 +83,7 @@ export default class DownLoader extends EventEmitter {
       const result = {
         remote_proxy: res.headers['remoteproxy'],
         drill_count: 0,
-        cookie: res.headers['Cookie'],
+        cookie: res.headers['set-cookie'],
         url: urlinfo['url'],
         origin: urlinfo,
         statusCode: res.statusCode,
