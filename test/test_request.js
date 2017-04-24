@@ -1,6 +1,7 @@
 import test from 'ava';
 import rq from 'request-promise';
 import url from 'url';
+import cheerio from 'cheerio';
 
 import cusReq from './../src/lib/http_request';
 
@@ -33,7 +34,8 @@ test('customeReq', async t => {
       }
     };
     const result = await cusReq.get(options);
-    console.log('result---->', result);
+    const $ = cheerio.load(result);
+    console.log('result---->', $.html({ decodeEntities: true }));
     t.truthy(true, 'customeReq success');
   } catch (err) {
     console.log('err', err);

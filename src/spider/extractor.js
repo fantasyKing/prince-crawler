@@ -3,8 +3,11 @@ import _ from 'lodash';
 import querystring from 'querystring';
 import util from 'util';
 import cheerio from 'cheerio';
+import { AllHtmlEntities } from 'html-entities';
 
 import Util from './../lib/util';
+
+const Entities = new AllHtmlEntities();
 
 export default class Extractor {
   constructor(spiderCore) {
@@ -242,7 +245,7 @@ export default class Extractor {
             if (dom) {
               baser = dom;
             } else {
-              baser = (cheerio.load(content)).root();
+              baser = cheerio.load(content);
             }
             let pick = rule['pick'];
             if (rule['subset']) {
@@ -251,9 +254,9 @@ export default class Extractor {
               const tmp_result = await self.cssSelector(baser, rule['expression'], pick, rule['index']);
 
               if (tmp_result) {
-                tmp_result.each((x) => {
+                tmp_result.each(async (x) => {
                   const sub_dom = tmp_result.eq(x);
-                  result_arr.push(self.extract_data(urlLink, content, rule['subset'], data, sub_dom));
+                  result_arr.push(await self.extract_data(urlLink, content, rule['subset'], data, sub_dom));
                 });
               }
 
@@ -338,7 +341,7 @@ export default class Extractor {
       let arrayResult = [];
       for (let i = 0; i < tmp_val.length; i++) {
         const val = tmp_val.eq(i);
-        arrayResult.push(this.cssSelectorPicker(val, pick));
+        arrayResult.push(await this.cssSelectorPicker(val, pick));
       }
       if (arrayResult.length === 1) arrayResult = arrayResult[0];
       return arrayResult;
@@ -361,6 +364,7 @@ export default class Extractor {
         case 'html':
         case 'innerhtml':
           result = val.html();
+          result = Entities.decode(result);
           break;
         default:
           break;
