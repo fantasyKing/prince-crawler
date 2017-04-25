@@ -25,7 +25,7 @@ export default class SpiderCore extends EventEmitter {
       await this.downloader.assembly();
       await this.extractor.assembly();
       await this.pipeline.assembly();
-      if ('assembly' in this.spider_extend) await self.spider_extend.assembly();
+      if ('assembly' in this.spider_extend) await this.spider_extend.assembly();
       this.spider.refreshDrillerRules();
     } catch (err) {
       this.logger.error('spidercore err = ', err);
