@@ -114,6 +114,12 @@ class Scheduler extends EventEmitter {
     }
   }
 
+  /**
+   * schdule的主要方法。
+   * 1. 遍历已经排好序的schedule rule
+   * 2. 若是第一次schedule, 则执行reSchedule
+   * 3. 否则执行doScheduleExt
+   */
   doSchedule = async () => {
     try {
       const scheduler = this;
@@ -167,6 +173,9 @@ class Scheduler extends EventEmitter {
     }
   }
 
+  /**
+   * 第一次schedule,调用该方法。
+   */
   reSchedule = async (driller, index) => {
     try {
       const scheduler = this;
@@ -202,13 +211,16 @@ class Scheduler extends EventEmitter {
 
       this.priotity_list[index]['first_schedule'] = false;
 
-      drillerInfoDb.hset(driller['key'], 'first_schedule', false);
+      await drillerInfoDb.hset(driller['key'], 'first_schedule', false);
       this.logger.debug(`update first schedule time for ${driller['key']} successful`);
     } catch (err) {
       this.logger.error('schedule.reSchedule.error =', err);
     }
   }
 
+  /**
+   * 正常的schedule方法
+   */
   doScheduleExt = async (xdriller, avg_rate, more) => new Promise(async (resolve) => {
     const scheduler = this;
     const drillerInfoDb = this.drillerInfoDb;
@@ -216,7 +228,7 @@ class Scheduler extends EventEmitter {
 
     const ct = Math.ceil(avg_rate * xdriller['rate']) + more;
     const act = queue_length >= ct ? ct : queue_length;
-    this.logger.debug(util.format('%s, rate:%d, queue length:%d, actual quantity:%d', xdriller['key'], xdriller['rate'], queue_length, act));
+    this.logger.debug(util.format('%s, rate:%d, urllib queue length:%d, actual quantity:%d', xdriller['key'], xdriller['rate'], queue_length, act));
 
     let count = 0;
     let pointer = true; // current point, false means end of list
@@ -281,7 +293,7 @@ class Scheduler extends EventEmitter {
         return false;
       }
       if (values['trace']) {
-        const t_url = scheduler.transformLink(url, values['trace']);
+        const t_url = await scheduler.transformLink(url, values['trace']);
         if (t_url !== url) {
           this.logger.debug(util.format('Transform url: %s -> %s', url, t_url));
           return await scheduler.checkURL(t_url, interval);
