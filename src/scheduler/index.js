@@ -24,6 +24,10 @@ class Scheduler extends EventEmitter {
 
   start = async () => {
     this.on('priorities_loaded', (priotity_list) => {
+      if (this.scheduleTimer) { // 清除旧的schedule timer
+        clearTimeout(this.scheduleTimer);
+      }
+
       priotity_list.sort((a, b) => b['rate'] - a['rate']);
 
       this.doSchedule();
@@ -83,8 +87,8 @@ class Scheduler extends EventEmitter {
               rate,
               rule: rule['schedule_rule'], // 'FIFO'
               interval: parseInt(rule['schedule_interval']), // 两次调度的时间间隔
-              first_schedule: rule['first_schedule'] !== undefined ? parseInt(rule['first_schedule']) : 0,
-              last_schedule: rule['last_schedule'] !== undefined ? parseInt(rule['last_schedule']) : 0,
+              first_schedule: rule['first_schedule'] || false,
+              last_schedule: rule['last_schedule'] || false,
               seed: JSON.parse(rule['seed'])
             });
           } else {
@@ -137,23 +141,25 @@ class Scheduler extends EventEmitter {
         },
         async (cb) => {
           const xdriller = scheduler.priotity_list[index];
-          // --check reschedule-------------
-          this.logger.debug('doSchedule.async.whilst.first_schedule--->', (new Date()).getTime() - xdriller['first_schedule'] - xdriller['interval'] * 1000);
-          if ((new Date()).getTime() - xdriller['first_schedule'] >= xdriller['interval'] * 1000) {
-            scheduler.reSchedule(xdriller, index);
+          // --check reschedule------------- // 应该改为如果urllib中都为空的话，执行reSchedule，然后可以去掉first_schedule字段,获取直接定义first_schedule为true, 执行过后改为false
+          this.logger.debug('doSchedule.async.whilst.first_schedule--->', xdriller['first_schedule']);
+          if (xdriller['first_schedule']) {
+            await scheduler.reSchedule(xdriller, index);
+          } else {
+            const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
+            left = more;
+            this.logger.debug('doSchedule.after.doScheduleExt.left', left);
           }
-          // -------------------------------
-          const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
-          left = more;
-          this.logger.debug('doSchedule.after.doScheduleExt.left', left);
           return cb();
+          // -------------------------------
         },
         (err) => {
           if (err) this.logger.error('schedule.doSchedule.async.whilst error =', err);
           this.logger.info(`schedule round finish, sleep ${scheduler.settings['schedule_interval']} s`);
-          setTimeout(() => {
+          const scheduleTimer = setTimeout(() => {
             scheduler.doSchedule();
           }, scheduler.settings['schedule_interval'] * 1000);
+          this.scheduleTimer = scheduleTimer;
         }
       );
     } catch (err) {
@@ -194,9 +200,9 @@ class Scheduler extends EventEmitter {
         }
       }
 
-      this.priotity_list[index]['first_schedule'] = this.schedule_version;
+      this.priotity_list[index]['first_schedule'] = false;
 
-      drillerInfoDb.hset(driller['key'], 'first_schedule', this.schedule_version);
+      drillerInfoDb.hset(driller['key'], 'first_schedule', false);
       this.logger.debug(`update first schedule time for ${driller['key']} successful`);
     } catch (err) {
       this.logger.error('schedule.reSchedule.error =', err);
@@ -408,7 +414,7 @@ class Scheduler extends EventEmitter {
 
       const urlInfoDb = this.urlInfoDb;
 
-      const link_info = await urlInfoDb.hgetall();
+      const link_info = await urlInfoDb.hgetall(urlhash);
 
       if (link_info && !Util.isEmpty(link_info)) {
         const t_record = link_info['records'];
@@ -435,7 +441,7 @@ class Scheduler extends EventEmitter {
         this.logger.debug(`update state of link(${link}) success: ${state}`);
         return true;
       }
-      let trace = scheduler.detectLink(link);
+      let trace = await scheduler.detectLink(link);
 
       if (trace !== '') {
         trace = `urllib:${trace}`;

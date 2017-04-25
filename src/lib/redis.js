@@ -4,8 +4,9 @@
 import Redis from 'ioredis';
 
 class redisClientExtend extends Redis {
-  constructor(name) {
-    super();
+  constructor(name, conf) {
+    console.log('redis.conf------>', conf);
+    super(conf.port, conf.host, { db: conf.db });
     this.name = name;
   }
 
@@ -59,15 +60,6 @@ class redisClientExtend extends Redis {
       return await this.quit();
     } catch (err) {
       console.log('redis close error =', err);
-      return 'FAIL';
-    }
-  }
-
-  async select(db) {
-    try {
-      return await this.select(db);
-    } catch (err) {
-      console.log('redis select error =', err);
       return 'FAIL';
     }
   }

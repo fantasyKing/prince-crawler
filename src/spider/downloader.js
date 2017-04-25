@@ -88,7 +88,8 @@ export default class DownLoader extends EventEmitter {
         origin: urlinfo,
         statusCode: res.statusCode,
         content: body,
-        cost: (new Date()) - startTime
+        cost: (new Date()) - startTime,
+        startTime
       };
 
       if (result['url'].startsWith('/')) {

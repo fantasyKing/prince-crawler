@@ -1,6 +1,6 @@
 import test from 'ava';
 
-import RedisClient from './../src/webconfig/utils/redis_client_init';
+import RedisClient from './../src/lib/redis_client_init';
 import Redis from './../src/lib/redis';
 
 const settings = {
@@ -40,13 +40,10 @@ test.beforeEach(async t => {
 
 test('hlist', async t => {
   try {
-    const drillerInfoDb = await Redis.getClient('drillerInfoDb');
-    const keys = await drillerInfoDb.hlist('driller*');
-    console.log('keys', keys);
-    for (const key of keys) {
-      const rule = await drillerInfoDb.hgetall(key);
-      console.log(`${key}-rule--->`, rule);
-    }
+    const urlInfoDb = await Redis.getClient('urlInfoDb');
+    // await urlInfoDb.select(1);
+    // console.log('select---->', urlInfoDb.select);
+    await urlInfoDb.set('test', 'hahahh');
     t.truthy(true, 'hlist success');
   } catch (err) {
     console.log('err =', err);

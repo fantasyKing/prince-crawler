@@ -84,6 +84,19 @@ const testUrl = function () {
   }
 };
 
+/**
+ * start crawling
+ */
+const crawl = function () {
+  const logger = simpleLogger.getLogger(`crawling-${options['i']}`);
+  logger.setLevel(log_level);
+  settings['logger'] = logger;
+  settings['instance'] = options['i'];
+  const spider = new Spider(settings);
+
+  spider.start();
+};
+
 switch (options['a']) {
   case 'config':
     configService();
@@ -93,6 +106,9 @@ switch (options['a']) {
     break;
   case 'test':
     testUrl();
+    break;
+  case 'crawl':
+    crawl();
     break;
   default:
     userArgv.showHelp();
