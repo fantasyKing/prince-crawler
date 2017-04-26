@@ -3,22 +3,20 @@
     "url_info_redis_db":["localhost", 6379, 1],
     "url_report_redis_db":["localhost", 6379, 2],
     "proxy_info_redis_db":["localhost", 6379, 3],
-    "use_proxy":false,
-    "proxy_router":"127.0.0.1:2013",
-    "download_timeout":60,
+    "use_proxy": false,
+    "proxy_router": "127.0.0.1:2013",
+    "download_timeout": 60,
     "save_content_to_mongodb": true,
-    "crawled_hbase_conf":["localhost",8080],
-    "crawled_hbase_table":"crawled",
+    "crawled_hbase_conf":["localhost", 8080],
+    "crawled_hbase_table": "crawled",
     "crawled_hbase_bin_table":"crawled_bin",
-    "statistic_mysql_db":["127.0.0.1",3306,"crawling","crawler","123"],
-    "check_driller_rules_interval":120,
-    "spider_concurrency":100,
-    "spider_request_delay":0,
-    "schedule_interval":10,
-    "schedule_quantity_limitation":200,
-    "download_retry":2,
-    "log_level":"DEBUG",
-    "use_ssdb":false,
-    "to_much_fail_exit":false,
-    "keep_link_relation":false
+    "check_driller_rules_interval": 120, // 多久检测一次网址规则的变化以便热刷新到运行中的爬虫
+    "spider_concurrency": 100, // 爬虫的抓取页面并发请求数
+    "spider_request_delay": 0, // 两个并发请求之间的间隔时间，秒
+    "schedule_interval": 10, // 调度器两次调度的间隔时间
+    "schedule_quantity_limitation": 200, // 调度器给爬虫的最大网址待抓取数量
+    "download_retry": 2, // 爬取失败后的重试次数
+    "log_level": "DEBUG",
+    "to_much_fail_exit": false,
+    "keep_link_relation": false // 链接库里是否存储链接间关系
 }

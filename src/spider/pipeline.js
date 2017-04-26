@@ -258,7 +258,6 @@ export default class PipeLine {
 
   save_content = async (pageurl, content, extracted_data, js_result, referer, urllib, drill_relation) => {
     this.logger.debug('pipeline.save_content----->pageurl=====', pageurl);
-    this.logger.debug('pipeline.save_content----->content=====', content);
     this.logger.debug('pipeline.save_content----->extracted_data=====', extracted_data);
     return true;
   }

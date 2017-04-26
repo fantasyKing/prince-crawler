@@ -369,6 +369,10 @@ class Scheduler extends EventEmitter {
     }
   }
 
+  /**
+   * 对url进行处理，按id_parameter中定义的规则进行
+   * @return 返回处理后的url
+   */
   transformLink = async (link, urllib) => {
     let final_link = link;
     const urlobj = urlUtil.parse(link);
@@ -409,6 +413,10 @@ class Scheduler extends EventEmitter {
     return arr.slice(1).join('.');
   }
 
+  /**
+   * 检测url属于哪一个rule
+   * @return 返回匹配的driller rule
+   */
   detectLink = async (link) => {
     const urlobj = urlUtil.parse(link);
     let result = '';
@@ -433,6 +441,10 @@ class Scheduler extends EventEmitter {
     return result;
   }
 
+  /**
+   * 更新url status的状态
+   * @return true/false
+   */
   updateLinkState = async (link, state, version) => {
     try {
       const scheduler = this;
