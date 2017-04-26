@@ -180,10 +180,10 @@ export default class Spider {
       const urlinfo = await spider.wrapLink(link);
       if (urlinfo !== null) {
         spider.spiderCore.emit('new_url_queue', urlinfo);
-      } else {
-        this.logger.error(`Cleaned dirty driller info for ${link}, but can not match any driller rule right now, ignore it.`);
-        return await spider.getUrlQueue();
+        return true;
       }
+      this.logger.error(`Cleaned dirty driller info for ${link}, but can not match any driller rule right now, ignore it.`);
+      return await spider.getUrlQueue();
     }
     const urlinfo = {
       url: link,
@@ -322,7 +322,7 @@ export default class Spider {
     let retryLimit = 3;
     const urlReportDb = this.urlReportDb;
 
-    if (spider.spiderCore.settings['download_retry'] && spider.spiderCore.settings['download_retry'] !== undefined){
+    if (spider.spiderCore.settings['download_retry']) {
       retryLimit = spider.spiderCore.settings['download_retry'];
     }
 
@@ -338,12 +338,12 @@ export default class Spider {
         spider.spiderCore.spider_extend.crawl_retry_alert(urlinfo); // report
       }
     } else {
+      spider.spiderCore.emit('slide_queue');
       await spider.updateLinkState(urlinfo['url'], 'crawled_failure');
 
       this.logger.error(util.format('after %s reties, give up crawl %s', urlinfo['retry'], urlinfo['url']));
 
       await urlReportDb.zadd(`fail:+${urlinfo['urllib']}`, urlinfo['version'], urlinfo['url']);
-      spider.spiderCore.emit('slide_queue');
 
       if ('crawl_fail_alert' in spider.spiderCore.spider_extend) spider.spiderCore.spider_extend.crawl_fail_alert(urlinfo); // report
     }
@@ -354,7 +354,7 @@ export default class Spider {
    * @param link
    * @param state
    */
-  updateLinkState = async (link, state) => {
+  updateLinkState = async (link, status) => {
     try {
       const spider = this;
       const urlhash = crypto.createHash('md5').update(String(link)).digest('hex');
@@ -375,15 +375,15 @@ export default class Spider {
           }
         }
 
-        records.push(state);
+        records.push(status);
 
         await urlInfoDb.hmset(urlhash, {
           records: JSON.stringify(records.length > 3 ? records.slice(-3) : records),
           last: (new Date()).getTime(),
-          status: state
+          status
         });
 
-        if (state === 'crawled_finish') {
+        if (status === 'crawled_finish') {
           await urlInfoDb.zrem(`fail:+${link_info['trace']}`, link);
         }
       } else {
@@ -399,7 +399,7 @@ export default class Spider {
             create: (new Date()).getTime(),
             records: JSON.stringify([]),
             last: (new Date()).getTime(),
-            state
+            status
           };
 
           await urlInfoDb.hmset(urlhash, urlinfo);

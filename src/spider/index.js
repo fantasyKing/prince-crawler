@@ -52,6 +52,7 @@ export default class SpiderCore extends EventEmitter {
       spiderCore.logger.info(`crawl ${crawled_info['url']} finish, proxy: ${crawled_info['remote_proxy']}, cost: ${((new Date()).getTime() - parseInt(crawled_info['origin']['start_time']))} ms`);
 
       if (await spiderCore.extractor.validateContent(crawled_info)) {
+        spiderCore.emit('slide_queue');
         let extracted_info = await spiderCore.extractor.extract(crawled_info);
 
         if ('extract' in spiderCore.spider_extend) {
@@ -71,8 +72,6 @@ export default class SpiderCore extends EventEmitter {
           if (extracted_info['gc']) extracted_info = null; // FGC
           else extracted_info['gc'] = true;
         }
-
-        spiderCore.emit('slide_queue');
       } else {
         spiderCore.logger.error(util.format('invalidate content %s', crawled_info['url']));
 
@@ -98,22 +97,21 @@ export default class SpiderCore extends EventEmitter {
 
     // pop a finished url, append a new url
     spiderCore.on('slide_queue', () => {
-      setTimeout(() => {
-        if (spiderCore.spider.queue_length > 0) spiderCore.spider.queue_length--;
-
-        spiderCore.spider.checkQueue(spiderCore.spider);
-      }, spiderCore.settings['spider_request_delay'] * 1000);
+      if (spiderCore.spider.queue_length > 0) spiderCore.spider.queue_length--; // queue_length 并发请求数
     });
 
     // once driller reles loaded
     spiderCore.once('driller_rules_loaded', () => {
-      spiderCore.emit('slide_queue');
-
+      if (this.checkQueueTimer) {
+        clearInterval(this.checkQueueTimer);
+        this.checkQueueTimer = null;
+      }
       const spiderIns = this.spider;
 
-      setInterval(() => {
+      const checkQueueTimer = setInterval(() => {
         spiderIns.checkQueue(spiderIns);
-      }, 10000);
+      }, spiderCore.settings['spider_request_delay'] * 1000 + 10);
+      this.checkQueueTimer = checkQueueTimer;
     });
 
     // trigger

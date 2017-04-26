@@ -26,6 +26,7 @@ class Scheduler extends EventEmitter {
     this.on('priorities_loaded', (priotity_list) => {
       if (this.scheduleTimer) { // 清除旧的schedule timer
         clearTimeout(this.scheduleTimer);
+        this.scheduleTimer = null;
       }
 
       priotity_list.sort((a, b) => b['rate'] - a['rate']);
@@ -462,6 +463,7 @@ class Scheduler extends EventEmitter {
         if (version) {
           valueDict['version'] = version; // set version
         }
+
         await urlInfoDb.hmset(urlhash, valueDict);
         this.logger.debug(`update state of link(${link}) success: ${state}`);
         return true;
@@ -475,9 +477,9 @@ class Scheduler extends EventEmitter {
           trace,
           referer: '',
           create: (new Date()).getTime(),
-          records: JSON.stringify([]),
+          records: JSON.stringify([state]),
           last: (new Date()).getTime(),
-          state
+          status: state
         };
 
         if (version) urlinfo['version'] = version; // update version
