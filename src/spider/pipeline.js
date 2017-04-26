@@ -2,6 +2,7 @@ import async from 'async';
 import urlUtil from 'url';
 import querystring from 'querystring';
 import util from 'util';
+import crypto from 'crypto';
 
 import RedisClient from './../lib/redis_client_init';
 import Redis from './../lib/redis';
@@ -27,7 +28,7 @@ export default class PipeLine {
 
       } else {
         if (extracted_info['drill_link']) {
-          await this.save_links(
+          this.save_links(
             extracted_info['url'],
             extracted_info['origin']['version'],
             extracted_info['drill_link'],
@@ -39,7 +40,7 @@ export default class PipeLine {
           let html_content = extracted_info['content'];
           if (!extracted_info['origin']['save_page']) html_content = '';
 
-          await this.save_content(
+          this.save_content(
             extracted_info['url'],
             html_content,
             extracted_info['extracted_data'],
@@ -82,8 +83,8 @@ export default class PipeLine {
         const domain = t_alias_arr[2];
 
         if (!spiderCore.spider.driller_rules[domain] || !spiderCore.spider.driller_rules[domain][drill_alias]) {
-          logger.error(`${alias} not in configuration`);
-          cb(new Error('Drill rule not found'));
+          this.logger.error(`${alias} not in configuration`);
+          return cb(new Error('Drill rule not found'));
         }
 
         let t_driller_rules = spiderCore.spider.driller_rules[domain][drill_alias];
@@ -171,7 +172,7 @@ export default class PipeLine {
                       }
 
                       if ((new Date()).getTime() - last < real_interval) {
-                        logger.debug(util.format('ignore %s, last event time:%s, status:%s', final_link, last, status));
+                        this.logger.debug(util.format('ignore %s, last event time:%s, status:%s', final_link, last, status));
                         validate = false;
                       } else {
                         this.logger.debug(`${final_link} should insert into urlqueue`);
@@ -223,7 +224,7 @@ export default class PipeLine {
                 try {
                   if (validate) {
                     const value = await drillerInfoDb.rpush(alias, final_link);
-                    logger.debug(`push url: ${link} to urllib: ${alias}`);
+                    this.logger.debug(`push url: ${link} to urllib: ${alias}`);
                     return water_cb(null, value);
                   }
                   return water_cb(null, 'done');
@@ -255,7 +256,10 @@ export default class PipeLine {
     );
   });
 
-  save_content = async () => {
+  save_content = async (pageurl, content, extracted_data, js_result, referer, urllib, drill_relation) => {
+    this.logger.debug('pipeline.save_content----->pageurl=====', pageurl);
+    this.logger.debug('pipeline.save_content----->content=====', content);
+    this.logger.debug('pipeline.save_content----->extracted_data=====', extracted_data);
     return true;
   }
 }

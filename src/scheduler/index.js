@@ -36,6 +36,10 @@ class Scheduler extends EventEmitter {
     this.assembly();
   }
 
+  /**
+   * 初始化redis链接.
+   * 调用refreshPriotities方法
+   */
   assembly = async () => {
     try {
       await RedisClient.init(this.settings);
@@ -47,6 +51,12 @@ class Scheduler extends EventEmitter {
     }
   }
 
+  /**
+   * 检查driller_rules是否改变，如果改变，则重新载入
+   * @driller_rules { domain: { alias: rule } }
+   * @priotity_list [{ key, rate, rule, interval, first_schedule, last_schedule, seed  }]
+   * @total_rates
+   */
   refreshPriotities = async () => {
     try {
       const scheduler = this;
@@ -74,12 +84,12 @@ class Scheduler extends EventEmitter {
           if (isActive) {
             this.logger.debug(`Load rule:${key}`);
 
-            if (scheduler.tmp_driller_rules[rule['domain']] === undefined) {
+            if (!scheduler.tmp_driller_rules[rule['domain']]) {
               scheduler.tmp_driller_rules[rule['domain']] = {};
             }
             scheduler.tmp_driller_rules[rule['domain']][rule['alias']] = rule;
 
-            const rate = (scheduler.max_weight + parseFloat(rule['weight'])) / parseFloat(rule['priority']);
+            const rate = (scheduler.max_weight + parseFloat(rule['weight'])) / parseFloat(rule['priority']); // (max_weight+weight)/priority
             scheduler.tmp_total_rates += rate; // rate越大优先级越高
 
             scheduler.tmp_priority_list.push({
@@ -99,6 +109,7 @@ class Scheduler extends EventEmitter {
         scheduler.driller_rules = scheduler.tmp_driller_rules;
         scheduler.priotity_list = scheduler.tmp_priority_list;
         scheduler.total_rates = scheduler.tmp_total_rates;
+
         this.logger.debug('priorities loaded finish');
 
         scheduler.emit('priorities_loaded', scheduler.priotity_list);
@@ -148,8 +159,9 @@ class Scheduler extends EventEmitter {
         async (cb) => {
           const xdriller = scheduler.priotity_list[index];
           // --check reschedule------------- // 应该改为如果urllib中都为空的话，执行reSchedule，然后可以去掉first_schedule字段,获取直接定义first_schedule为true, 执行过后改为false
-          this.logger.debug('doSchedule.async.whilst.first_schedule--->', xdriller['first_schedule']);
-          if (xdriller['first_schedule']) {
+          this.logger.debug('doSchedule.async.whilst.reSchedule.first_schedule------>', xdriller['first_schedule']);
+          if (!(xdriller['first_schedule'] === 'false')) {
+            this.logger.debug('doSchedule.async.whilst.reSchedule');
             await scheduler.reSchedule(xdriller, index);
           } else {
             const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
@@ -220,6 +232,7 @@ class Scheduler extends EventEmitter {
 
   /**
    * 正常的schedule方法
+   * 从urllib中取出url，判断url是否可以进入queue
    */
   doScheduleExt = async (xdriller, avg_rate, more) => new Promise(async (resolve) => {
     const scheduler = this;
