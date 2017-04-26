@@ -56,6 +56,7 @@
     "ioredis": "^2.5.0",
     "lodash": "^4.17.4",
     "method-override": "^2.3.8",
+    "mongodb": "^2.2.26",
     "morgan": "^1.8.1",
     "optimist": "^0.6.1",
     "request": "^2.81.0",

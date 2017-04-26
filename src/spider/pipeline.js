@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import RedisClient from './../lib/redis_client_init';
 import Redis from './../lib/redis';
 import Util from './../lib/util';
+import Mongodb from './../lib/mongodb';
 
 export default class PipeLine {
   constructor(spiderCore) {
@@ -20,6 +21,12 @@ export default class PipeLine {
     this.drillerInfoDb = Redis.getClient('drillerInfoDb');
     this.urlInfoDb = Redis.getClient('urlInfoDb');
     this.urlReportDb = Redis.getClient('urlReportDb');
+    if (this.settings.save_content_to_mongodb) {
+      const config = this.settings.mongo;
+      const { url, options } = config;
+      const mongodb = new Mongodb();
+      this.mongodb = await mongodb.connect(url, options);
+    }
   }
 
   save = async (extracted_info) => {
@@ -259,6 +266,7 @@ export default class PipeLine {
   save_content = async (pageurl, content, extracted_data, js_result, referer, urllib, drill_relation) => {
     this.logger.debug('pipeline.save_content----->pageurl=====', pageurl);
     this.logger.debug('pipeline.save_content----->extracted_data=====', extracted_data);
+    process.exit();
     return true;
   }
 }
