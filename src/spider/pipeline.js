@@ -51,7 +51,6 @@ export default class PipeLine {
             extracted_info['url'],
             html_content,
             extracted_info['extracted_data'],
-            extracted_info['js_result'],
             extracted_info['origin']['referer'],
             extracted_info['origin']['urllib'],
             extracted_info['drill_relation']
@@ -263,10 +262,46 @@ export default class PipeLine {
     );
   });
 
-  save_content = async (pageurl, content, extracted_data, js_result, referer, urllib, drill_relation) => {
-    this.logger.debug('pipeline.save_content----->pageurl=====', pageurl);
-    this.logger.debug('pipeline.save_content----->extracted_data=====', extracted_data);
-    process.exit();
-    return true;
+  save_content = async (page_url, content, extracted_data, referer, urllib, drill_relation) => {
+    try {
+      this.logger.debug('save_content.extracted_data----->', extracted_data);
+      const Db = this.mongodb;
+      if (extracted_data) {
+        const category = extracted_data['category'];
+        const collection = await Db.getCollection(category);
+
+        const url_hash = crypto.createHash('md5').update(`${page_url}`).digest('hex'); // 用于去重
+
+        const { ok } = await collection.findOneAndUpdate({
+          url_hash
+        }, {
+          $set: {
+            page_url,
+            content,
+            extracted_data,
+            referer,
+            urllib,
+            drill_relation,
+            updated_at: new Date()
+          },
+          $setOnInsert: {
+            created_at: new Date()
+          }
+        }, {
+          upsert: true
+        });
+        if (ok) {
+          this.logger.debug('pipeline.save_content.success, url --->', page_url);
+          return true;
+        }
+        this.logger.error('pipeline.save_content.error url --->', page_url);
+        process.exit();
+      }
+      return false;
+    } catch (err) {
+      this.logger.error('pipeline.save_content.err =', err);
+      process.exit();
+      return false;
+    }
   }
 }

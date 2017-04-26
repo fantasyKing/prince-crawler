@@ -219,7 +219,7 @@ export default class Extractor {
     const data = {};
     const self = this;
 
-    if (extract_rule['category']) data['$category'] = extract_rule['category'];
+    if (extract_rule['category']) data['category'] = extract_rule['category'];
     if (extract_rule['relate'])data['relate'] = uppper_data[extract_rule['relate']];
 
     for (const key of Object.keys(extract_rule['rule'])) {

@@ -8,7 +8,7 @@
   "download_timeout": 60,
   "save_content_to_mongodb": true,
   "mongo": {
-    "url": "mongodb://localhost:27017/test",
+    "url": "mongodb://localhost:27017/crawl",
     "options": {
       "poolSize": 10,
       "auth": {
