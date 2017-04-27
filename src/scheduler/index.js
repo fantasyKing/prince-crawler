@@ -365,7 +365,7 @@ class Scheduler extends EventEmitter {
       }
       return false;
     } catch (err) {
-      this.logger.error('schedule.checkURL.error');
+      this.logger.error('schedule.checkURL.error', err);
       return false;
     }
   }
@@ -396,7 +396,7 @@ class Scheduler extends EventEmitter {
           for (let x = 0; x < id_parameter.length; x++) {
             const param_name = id_parameter[x];
             if (x === 0 && param_name === '#') break;
-            if (parameters.hasOwnProperty(param_name)) new_parameters[param_name] = parameters[param_name];
+            if (parameters[param_name]) new_parameters[param_name] = parameters[param_name];
           }
 
           urlobj.search = querystring.stringify(new_parameters);

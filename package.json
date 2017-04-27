@@ -11,7 +11,7 @@
     "start": "babel-node",
     "webconfig": "babel-node ./src/index.js --i example --a config --p 8888",
     "schedule": "babel-node ./src/index.js --i example --a schedule",
-    "test": "babel-node ./src/index.js --i example --a test --l 'http://www.8btc.com/sitemap?cat=1'",
+    "test": "babel-node ./src/index.js --i example --a test --l 'http://www.8btc.com/sitemap?pg=5'",
     "crawl": "babel-node ./src/index.js --i example --a crawl"
   },
   "keywords": [
