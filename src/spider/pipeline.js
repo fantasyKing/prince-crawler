@@ -32,7 +32,7 @@ export default class PipeLine {
   save = async (extracted_info) => {
     try {
       if (this.spiderCore.settings['test']) {
-
+        this.logger.debug('pipeline.save.extracted_info----->', extracted_info);
       } else {
         if (extracted_info['drill_link']) {
           this.save_links(
@@ -126,7 +126,7 @@ export default class PipeLine {
 
                         if (x === 0 && param_name === '#') break;
 
-                        if (parameters.hasOwnProperty(param_name)) new_parameters[param_name] = parameters[param_name];
+                        if (parameters[param_name]) new_parameters[param_name] = parameters[param_name];
                       }
 
                       urlobj.search = querystring.stringify(new_parameters);

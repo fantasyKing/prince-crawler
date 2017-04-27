@@ -126,7 +126,7 @@ export default class Extractor {
           for (let x = 0; x < id_parameter.length; x++) {
             const param_name = id_parameter[x];
             if (x === 0 && param_name === '#') break;
-            if (parameters.hasOwnProperty(param_name)) new_parameters[param_name] = parameters[param_name];
+            if (parameters[param_name]) new_parameters[param_name] = parameters[param_name];
           }
 
           urlobj.search = querystring.stringify(new_parameters);
@@ -137,9 +137,12 @@ export default class Extractor {
       }
     }
 
-    for (const key of Object.keys(linkobj)) {
-      if (linkobj.hasOwnProperty(key)) {
-        linkobj[key] = _.uniq(linkobj[key]);
+    const keys = Object.keys(linkobj);
+    if (keys.length) {
+      for (const key of Object.keys(linkobj)) {
+        if (linkobj.hasOwnProperty(key)) {
+          linkobj[key] = _.uniq(linkobj[key]);
+        }
       }
     }
 
@@ -246,7 +249,7 @@ export default class Extractor {
             if (dom) {
               baser = dom;
             } else {
-              baser = cheerio.load(content);
+              baser = (cheerio.load(content)).root();
             }
             let pick = rule['pick'];
             if (rule['subset']) {

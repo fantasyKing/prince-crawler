@@ -23,7 +23,7 @@ test.skip('req', async t => {
 test('customeReq', async t => {
   try {
     const options = {
-      uri: url.parse('http://www.dongqiudi.com/'),
+      uri: url.parse('http://www.8btc.com/sitemap'),
       method: 'GET',
       gzip: true,
       headers: {
@@ -33,9 +33,9 @@ test('customeReq', async t => {
         'Accept-Encoding': 'gzip',
       }
     };
-    const result = await cusReq.get(options);
-    const $ = cheerio.load(result);
-    console.log('result---->', $.html({ decodeEntities: true }));
+    const { body } = await cusReq.get(options);
+    const $ = cheerio.load(body).root();
+    console.log('result---->', $.find('div.article-content img').eq(1).attr('src'));
     t.truthy(true, 'customeReq success');
   } catch (err) {
     console.log('err', err);

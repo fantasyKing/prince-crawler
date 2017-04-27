@@ -164,6 +164,7 @@ class Scheduler extends EventEmitter {
           if (!(xdriller['first_schedule'] === 'false')) {
             this.logger.debug('doSchedule.async.whilst.reSchedule');
             await scheduler.reSchedule(xdriller, index);
+            xdriller['first_schedule'] = 'false';
           } else {
             const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
             left = more;
@@ -481,7 +482,6 @@ class Scheduler extends EventEmitter {
         return true;
       }
       let trace = await scheduler.detectLink(link);
-
       if (trace !== '') {
         trace = `urllib:${trace}`;
         const urlinfo = {

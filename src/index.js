@@ -78,6 +78,7 @@ const testUrl = function () {
     const logger = simpleLogger.getLogger(`test-${options['i']}`);
     logger.setLevel(log_level);
     settings['logger'] = logger;
+    settings['test'] = true;
     const spider = new Spider(settings);
 
     spider.test(options['l']);
