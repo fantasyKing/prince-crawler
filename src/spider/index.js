@@ -106,10 +106,10 @@ export default class SpiderCore extends EventEmitter {
         clearInterval(this.checkQueueTimer);
         this.checkQueueTimer = null;
       }
-      const spiderIns = this.spider;
+      const spider = this.spider;
 
       const checkQueueTimer = setInterval(() => {
-        spiderIns.checkQueue(spiderIns);
+        spider.checkQueue(spider);
       }, spiderCore.settings['spider_request_delay'] * 1000 + 10);
       this.checkQueueTimer = checkQueueTimer;
     });
