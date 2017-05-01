@@ -111,6 +111,7 @@ class Scheduler extends EventEmitter {
 
         this.logger.debug('priorities loaded finish');
 
+        scheduler.driller_rules = drillerRules;
         scheduler.emit('priorities_loaded', priorityList);
         scheduler.priotitiesUpdated = parseInt(drillerRuleUpdateTime);
       } else {
@@ -166,15 +167,13 @@ class Scheduler extends EventEmitter {
             if (!(xdriller['first_schedule'] === 'false')) {
               this.logger.debug('doSchedule.async.whilst.reSchedule');
 
-              await scheduler.reSchedule(xdriller, index);
-
-              xdriller['first_schedule'] = 'false';
+              await scheduler.reSchedule(xdriller);
             } else {
               const more = await scheduler.doScheduleExt(xdriller, avg_rate, left);
               left = more;
               this.logger.debug('doSchedule.after.doScheduleExt.left', left);
             }
-            return cb();
+            return cb(null);
           } catch (err) {
             return cb(err);
           }
@@ -196,7 +195,7 @@ class Scheduler extends EventEmitter {
   /**
    * 第一次schedule,调用该方法。
    */
-  reSchedule = async (driller, index) => {
+  reSchedule = async (driller) => {
     try {
       const scheduler = this;
       const drillerInfoDb = this.drillerInfoDb;
@@ -229,8 +228,7 @@ class Scheduler extends EventEmitter {
         }
       }
 
-      this.priotity_list[index]['first_schedule'] = false;
-
+      driller['first_schedule'] = 'false';
       await drillerInfoDb.hset(driller['key'], 'first_schedule', false);
       this.logger.debug(`update first schedule time for ${driller['key']} successful`);
     } catch (err) {
@@ -242,7 +240,7 @@ class Scheduler extends EventEmitter {
    * 正常的schedule方法
    * 从urllib中取出url，判断url是否可以进入queue
    */
-  doScheduleExt = async (xdriller, avg_rate, more) => new Promise(async (resolve, reject) => {
+  doScheduleExt = async (xdriller, avg_rate, more) => new Promise(async (resolve) => {
     const scheduler = this;
     const drillerInfoDb = this.drillerInfoDb;
     const queue_length = await drillerInfoDb.llen(`urllib:${xdriller['key']}`);
@@ -290,7 +288,6 @@ class Scheduler extends EventEmitter {
       (err) => {
         if (err) {
           this.logger.error('schedule.doScheduleExt.whilst.error', err);
-          return reject(err);
         }
         let left = 0;
         if (count < ct) left = ct - count;
@@ -496,7 +493,8 @@ class Scheduler extends EventEmitter {
         return true;
       }
       let trace = await scheduler.detectLink(link);
-      if (trace !== '') {
+
+      if (trace) {
         trace = `urllib:${trace}`;
         const urlinfo = {
           url: link,

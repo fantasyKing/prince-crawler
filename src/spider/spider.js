@@ -55,60 +55,59 @@ export default class Spider {
    */
   refreshDrillerRules = async () => {
     const self = this;
-    const drillerInfoDb = this.drillerInfoDb;
+    try {
+      const drillerInfoDb = self.drillerInfoDb;
 
-    const value = await drillerInfoDb.get('updated:driller:rule');
+      const value = await drillerInfoDb.get('updated:driller:rule');
 
-    if (self.driller_rules_updated !== parseInt(value)) {
-      this.logger.info('driller rules is changed');
+      if (self.driller_rules_updated !== parseInt(value)) {
+        this.logger.info('driller rules is changed');
 
-      const rules = await drillerInfoDb.hlist('driller:*'); // 获取所有的抓取规则
+        const ruleKeys = await drillerInfoDb.hlist('driller:*'); // 获取所有的抓取规则
 
-      self.tmp_driller_rules = {};
-      self.tmp_driller_rules_length = rules.length;
+        const dillerRules = {};
 
-      for (let i = 0; i < rules.length; i++) {
-        self.wrapper_rules(rules[i]);
+        for (let i = 0; i < ruleKeys.length; i++) {
+          await self.wrapper_rules(dillerRules, ruleKeys[i]);
+        }
+
+        self.driller_rules = dillerRules;
+        self.driller_rules_updated = parseInt(value);
+
+        self.spiderCore.emit('driller_rules_loaded');
+      } else {
+        this.logger.debug(`driller rules is not changed, queue length: ${self.queue_length}`);
+        setTimeout(() => {
+          self.refreshDrillerRules();
+        }, self.spiderCore.settings['check_driller_rules_interval'] * 1000);
       }
-      self.driller_rules_updated = parseInt(value);
-    } else {
-      this.logger.debug(`driller rules is not changed, queue length: ${self.queue_length}`);
-      setTimeout(() => {
-        self.refreshDrillerRules();
-      }, self.spiderCore.settings['check_driller_rules_interval'] * 1000);
+    } catch (err) {
+      self.logger.error('spiderCore.spider.refreshDrillerRules.error = ', err);
     }
   }
 
-  wrapper_rules = async (key) => {
+  wrapper_rules = async (dillerRules, key) => {
     const self = this;
-    const drillerInfoDb = this.drillerInfoDb;
+    try {
+      const drillerInfoDb = self.drillerInfoDb;
 
-    const rule = await drillerInfoDb.hgetall(key);
+      const rule = await drillerInfoDb.hgetall(key);
 
-    if (self.tmp_driller_rules === undefined) {
-      self.tmp_driller_rules = {};
-    }
-    const isActive = rule['active'] === 'true' || rule['active'] === true || rule['active'] === '1' || rule['active'] === 1;
+      const isActive = rule['active'] === 'true' || rule['active'] === true || rule['active'] === '1' || rule['active'] === 1;
 
-    if (isActive || self.spiderCore.settings['test']) {
-      this.logger.info(`Load rule: ${key}`);
-      if (self.tmp_driller_rules[rule['domain']] === undefined) {
-        self.tmp_driller_rules[rule['domain']] = {};
+      if (isActive || self.spiderCore.settings['test']) {
+        self.logger.info(`Load rule: ${key}`);
+        if (!dillerRules[rule['domain']]) {
+          dillerRules[rule['domain']] = {};
+        }
+        dillerRules[rule['domain']][rule['alias']] = self.jsonSmartDeepParse(rule);
+      } else {
+        self.logger.debug(`Ignore rule: ${key}, status inactive`);
       }
-      self.tmp_driller_rules[rule['domain']][rule['alias']] = self.jsonSmartDeepParse(rule);
-    } else {
-      this.logger.debug(`Ignore rule: ${key}, status inactive`);
-    }
-    self.tmp_driller_rules_length--;
-
-    if (self.tmp_driller_rules_length <= 0) {
-      self.driller_rules = self.tmp_driller_rules;
-
-      self.spiderCore.emit('driller_rules_loaded', self.driller_rules);
-
-      setTimeout(() => {
-        self.refreshDrillerRules();
-      }, self.spiderCore.settings['check_driller_rules_interval'] * 1000);
+      return;
+    } catch (err) {
+      self.logger.error('spiderCore.spider.wrapper_rules.error', err);
+      throw err;
     }
   }
 
@@ -122,7 +121,7 @@ export default class Spider {
       return this.driller_rules[splited_id[pos]][splited_id[pos + 1]][name];
     }
     this.logger.warn(util.format('%s in %s %s, not found', name, splited_id[pos], splited_id[pos + 1]));
-    return false;
+    return null;
   }
 
   getDrillerRules = async (id) => {
@@ -140,7 +139,7 @@ export default class Spider {
   }
 
   getUrlQueue = async () => {
-    const spider = this;
+    const self = this;
 
     const drillerInfoDb = this.drillerInfoDb;
     const urlInfoDb = this.urlInfoDb;
@@ -148,8 +147,8 @@ export default class Spider {
     const link = await drillerInfoDb.lpop('queue:scheduled:all');
 
     if (!link) {
-      this.logger.info(`No candidate queue, ${spider.queue_length} urls in crawling.`);
-      if ('no_queue_alert' in spider.spiderCore.spider_extend) spider.spiderCore.spider_extend.no_queue_alert();
+      this.logger.info(`No candidate queue, ${self.queue_length} urls in crawling.`);
+      if ('no_queue_alert' in self.spiderCore.spider_extend) self.spiderCore.spider_extend.no_queue_alert();
       return false;
     }
 
@@ -158,32 +157,32 @@ export default class Spider {
     const link_info = await urlInfoDb.hgetall(linkhash);
 
     if (!link_info || Util.isEmpty(link_info)) {
-      this.logger.warn(`${link} has no url info, ${linkhash}, we try to match it`);
-      const urlinfo = await spider.wrapLink(link);
+      self.logger.warn(`${link} has no url info, ${linkhash}, we try to match it`);
+      const urlinfo = await self.wrapLink(link);
 
       if (urlinfo !== null) {
-        spider.spiderCore.emit('new_url_queue', urlinfo);
+        self.spiderCore.emit('new_url_queue', urlinfo);
         return true;
       }
-      this.logger.error(`${link} can not match any driller rule, ignore it.`);
-      return await spider.getUrlQueue();
+      self.logger.error(`${link} can not match any driller rule, ignore it.`);
+      return await self.getUrlQueue();
     }
     if (!link_info['trace']) {
-      this.logger.warn(`${link}, url info is incomplete`);
-      return await spider.getUrlQueue();
+      self.logger.warn(`${link}, url info is incomplete`);
+      return await self.getUrlQueue();
     }
-    const drillerinfo = await spider.getDrillerRules(link_info['trace']);
+    const drillerinfo = await self.getDrillerRules(link_info['trace']);
 
     if (drillerinfo === null) {
       await urlInfoDb.del(linkhash);
-      this.logger.warn(`${link}, has dirty driller info! clean it`);
-      const urlinfo = await spider.wrapLink(link);
+      self.logger.warn(`${link}, has dirty driller info! clean it`);
+      const urlinfo = await self.wrapLink(link);
       if (urlinfo !== null) {
-        spider.spiderCore.emit('new_url_queue', urlinfo);
+        self.spiderCore.emit('new_url_queue', urlinfo);
         return true;
       }
-      this.logger.error(`Cleaned dirty driller info for ${link}, but can not match any driller rule right now, ignore it.`);
-      return await spider.getUrlQueue();
+      self.logger.error(`Cleaned dirty driller info for ${link}, but can not match any driller rule right now, ignore it.`);
+      return await self.getUrlQueue();
     }
     const urlinfo = {
       url: link,
@@ -206,30 +205,34 @@ export default class Spider {
       stoppage: drillerinfo['stoppage'],
       start_time: (new Date()).getTime()
     };
-    this.logger.info(`new url: '+${link}`);
-    spider.spiderCore.emit('new_url_queue', urlinfo);
+    self.logger.info(`new url: '+${link}`);
+    self.spiderCore.emit('new_url_queue', urlinfo);
     return true;
   }
 
-  checkQueue = async (spider) => {
+  checkQueue = async () => {
     let breakTt = false;
 
     async.whilst(
       () => {
-        this.logger.debug(`Check queue, length: ${spider.queue_length}`);
-        return spider.queue_length < spider.spiderCore.settings['spider_concurrency'] && breakTt !== true;
+        this.logger.debug(`Check spider concurrency queue, length: ${this.queue_length}`);
+        return this.queue_length < this.spiderCore.settings['spider_concurrency'] && breakTt !== true;
       },
       async (cb) => {
-        const bol = await spider.getUrlQueue();
-        if (bol === true) {
-          spider.queue_length++;
-        } else {
-          breakTt = true;
+        try {
+          const bol = await this.getUrlQueue();
+          if (bol === true) {
+            this.queue_length++;
+          } else {
+            breakTt = true;
+          }
+          return cb();
+        } catch (err) {
+          return cb(err);
         }
-        cb();
       },
       (err) => {
-        if (err) logger.error('Exception in check queue.');
+        if (err) logger.error('Exception in check queue.', err);
       }
     );
   }
@@ -318,34 +321,40 @@ export default class Spider {
  * @param urlinfo
  */
   retryCrawl = async (urlinfo) => {
-    const spider = this;
-    let retryLimit = 3;
-    const urlReportDb = this.urlReportDb;
+    const self = this;
+    try {
+      let retryLimit = 3;
+      const urlReportDb = this.urlReportDb;
 
-    if (spider.spiderCore.settings['download_retry']) {
-      retryLimit = spider.spiderCore.settings['download_retry'];
-    }
-
-    let act_retry = 0;
-    if (urlinfo['retry']) act_retry = urlinfo['retry'];
-
-    if (act_retry < retryLimit) {
-      urlinfo['retry'] = act_retry + 1;
-      this.logger.info(util.format('Retry url: %s, time: ', urlinfo['url'], urlinfo['retry']));
-      spider.spiderCore.emit('new_url_queue', urlinfo);
-
-      if ('crawl_retry_alert' in spider.spiderCore.spider_extend) {
-        spider.spiderCore.spider_extend.crawl_retry_alert(urlinfo); // report
+      if (self.spiderCore.settings['download_retry']) {
+        retryLimit = self.spiderCore.settings['download_retry'];
       }
-    } else {
-      spider.spiderCore.emit('slide_queue');
-      await spider.updateLinkState(urlinfo['url'], 'crawled_failure');
 
-      this.logger.error(util.format('after %s reties, give up crawl %s', urlinfo['retry'], urlinfo['url']));
+      let act_retry = 0;
+      if (urlinfo['retry']) act_retry = urlinfo['retry'];
 
-      await urlReportDb.zadd(`fail:+${urlinfo['urllib']}`, urlinfo['version'], urlinfo['url']);
+      if (act_retry < retryLimit) {
+        urlinfo['retry'] = act_retry + 1;
+        this.logger.info(util.format('Retry url: %s, time: ', urlinfo['url'], urlinfo['retry']));
 
-      if ('crawl_fail_alert' in spider.spiderCore.spider_extend) spider.spiderCore.spider_extend.crawl_fail_alert(urlinfo); // report
+        self.queue_length++;
+        self.spiderCore.emit('new_url_queue', urlinfo);
+
+        if ('crawl_retry_alert' in self.spiderCore.spider_extend) {
+          self.spiderCore.spider_extend.crawl_retry_alert(urlinfo); // report
+        }
+      } else {
+        self.spiderCore.emit('slide_queue');
+        await self.updateLinkState(urlinfo['url'], 'crawled_failure');
+
+        this.logger.error(util.format('after %s reties, give up crawl %s', urlinfo['retry'], urlinfo['url']));
+
+        await urlReportDb.zadd(`fail:${urlinfo['urllib']}`, urlinfo['version'], urlinfo['url']);
+
+        if ('crawl_fail_alert' in self.spiderCore.spider_extend) self.spiderCore.spider_extend.crawl_fail_alert(urlinfo); // report
+      }
+    } catch (err) {
+      self.logger.error('spider.retryCrawl.err =', err);
     }
   }
 
@@ -355,8 +364,8 @@ export default class Spider {
    * @param state
    */
   updateLinkState = async (link, status) => {
+    const self = this;
     try {
-      const spider = this;
       const urlhash = crypto.createHash('md5').update(String(link)).digest('hex');
 
       const urlInfoDb = this.urlInfoDb;
@@ -384,10 +393,10 @@ export default class Spider {
         });
 
         if (status === 'crawled_finish') {
-          await urlInfoDb.zrem(`fail:+${link_info['trace']}`, link);
+          await urlInfoDb.zrem(`fail:${link_info['trace']}`, link);
         }
       } else {
-        let trace = await spider.detectLink(link);
+        let trace = await self.detectLink(link);
 
         if (trace !== '') {
           trace = `urllib:${trace}`;
