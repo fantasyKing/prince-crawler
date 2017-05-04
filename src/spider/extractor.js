@@ -39,16 +39,6 @@ export default class Extractor {
     return links;
   }
 
-  __getTopLevelDomain = (domain) => {
-    if (!domain) return null;
-    const arr = domain.split('.');
-
-    if (arr.length <= 2) {
-      return domain;
-    }
-    return arr.slice(1).join('.');
-  }
-
   wash_link = async (pageurl, links) => {
     const cleaned_link = [];
 
@@ -75,7 +65,7 @@ export default class Extractor {
   detectLink = async (link) => {
     const urlobj = url.parse(link);
     let result = [];
-    const domain = this.__getTopLevelDomain(urlobj['hostname']);
+    const domain = this.spiderCore.spider.__getTopLevelDomain(urlobj['hostname']);
 
     if (domain && this.spiderCore.spider.driller_rules[domain] !== undefined) {
       const alias = this.spiderCore.spider.driller_rules[domain];
@@ -187,35 +177,40 @@ export default class Extractor {
    * @returns {*}
    */
   extract = async (crawl_info) => {
-    const extract_rule = await this.spiderCore.spider.getDrillerRule(crawl_info['origin']['urllib'], 'extract_rule');
+    try {
+      const extract_rule = await this.spiderCore.spider.getDrillerRule(crawl_info['origin']['urllib'], 'extract_rule');
 
-    if (crawl_info['origin']['drill_rules'] || extract_rule['rule']) {
-      const $ = cheerio.load(crawl_info['content']);
+      if (crawl_info['origin']['drill_rules'] || extract_rule['rule']) {
+        const $ = cheerio.load(crawl_info['content']);
 
-      let drill_link = '';
-      if (crawl_info['origin']['drill_rules']) {
-        if (crawl_info['drill_link']) {
-          drill_link = crawl_info['drill_link'];
-        } else {
-          drill_link = await this.extract_link($, crawl_info['origin']['drill_rules']);
+        let drill_link = '';
+        if (crawl_info['origin']['drill_rules']) {
+          if (crawl_info['drill_link']) {
+            drill_link = crawl_info['drill_link'];
+          } else {
+            drill_link = await this.extract_link($, crawl_info['origin']['drill_rules']);
+          }
+
+          const washed_link = await this.wash_link(crawl_info['url'], drill_link);
+
+          crawl_info['drill_link'] = await this.arrange_link(washed_link);
+
+          if (this.spiderCore.settings['keep_link_relation']) {
+            crawl_info['drill_relation'] = await this.getDrillRelation($, crawl_info);
+          }
         }
 
-        const washed_link = await this.wash_link(crawl_info['url'], drill_link);
-
-        crawl_info['drill_link'] = await this.arrange_link(washed_link);
-
-        if (this.spiderCore.settings['keep_link_relation']) {
-          crawl_info['drill_relation'] = await this.getDrillRelation($, crawl_info);
+        if (extract_rule['rule'] && !Util.isEmpty(extract_rule['rule'])) {
+          const extracted_data = await this.extract_data(crawl_info['url'], crawl_info['content'], extract_rule, null, $.root());
+          crawl_info['extracted_data'] = extracted_data;
         }
       }
 
-      if (extract_rule['rule'] && !Util.isEmpty(extract_rule['rule'])) {
-        const extracted_data = await this.extract_data(crawl_info['url'], crawl_info['content'], extract_rule, null, $.root());
-        crawl_info['extracted_data'] = extracted_data;
-      }
+      return crawl_info;
+    } catch (err) {
+      this.logger.error('extractor.extract.err---->', err);
+      throw err;
     }
-
-    return crawl_info;
   }
 
   extract_data = async (urlLink, content, extract_rule, uppper_data, dom) => {

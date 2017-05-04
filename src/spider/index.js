@@ -38,61 +38,78 @@ export default class SpiderCore extends EventEmitter {
 
     // when get a new url from candidate queue
     spiderCore.on('new_url_queue', (urlinfo) => {
-      spiderCore.spider.updateLinkState(urlinfo['url'], 'crawling');
+      try {
+        spiderCore.spider.updateLinkState(urlinfo['url'], 'crawling');
 
-      spiderCore.downloader.download(urlinfo);
+        spiderCore.downloader.download(urlinfo);
 
-      if ('crawl_start_alert' in spiderCore.spider_extend) {
-        spiderCore.spider_extend.crawl_start_alert(urlinfo);
+        if ('crawl_start_alert' in spiderCore.spider_extend) {
+          spiderCore.spider_extend.crawl_start_alert(urlinfo);
+        }
+      } catch (err) {
+        spiderCore.logger.error('spiderCore.event.new_url_queue---->', err);
       }
     });
 
     // when downloading is finish
     spiderCore.on('crawled', async (crawled_info) => {
-      spiderCore.logger.info(`crawl ${crawled_info['url']} finish, proxy: ${crawled_info['remote_proxy']}, cost: ${((new Date()).getTime() - parseInt(crawled_info['origin']['start_time']))} ms`);
+      try {
+        spiderCore.logger.info(`crawl ${crawled_info['url']} finish, proxy: ${crawled_info['remote_proxy']}, cost: ${((new Date()).getTime() - parseInt(crawled_info['origin']['start_time']))} ms`);
 
-      if (await spiderCore.extractor.validateContent(crawled_info)) {
         spiderCore.emit('slide_queue');
-        let extracted_info = await spiderCore.extractor.extract(crawled_info);
 
-        if ('extract' in spiderCore.spider_extend) {
-          const new_extracted_info = await spiderCore.spider_extend.extract(extracted_info);
-          if (new_extracted_info) {
-            extracted_info = new_extracted_info;
+        if (await spiderCore.extractor.validateContent(crawled_info)) {
+          let extracted_info = await spiderCore.extractor.extract(crawled_info);
+
+          if ('extract' in spiderCore.spider_extend) {
+            const new_extracted_info = await spiderCore.spider_extend.extract(extracted_info);
+            if (new_extracted_info) {
+              extracted_info = new_extracted_info;
+            }
           }
+
+          await spiderCore.pipeline.save(extracted_info);
+
+          await spiderCore.spider.updateLinkState(crawled_info['url'], 'crawled_finish');
+
+          if ('crawl_finish_alert' in spiderCore.spider_extend) await spiderCore.spider_extend.crawl_finish_alert(crawled_info);
+
+          if (extracted_info) {
+            if (extracted_info['gc']) extracted_info = null; // FGC
+            else extracted_info['gc'] = true;
+          }
+        } else {
+          spiderCore.logger.error(util.format('invalidate content %s', crawled_info['url']));
+
+          crawled_info['origin']['void_proxy'] = crawled_info['remote_proxy'];
+
+          spiderCore.spider.retryCrawl(Util.clone(crawled_info['origin']));
         }
-
-        await spiderCore.pipeline.save(extracted_info);
-
-        await spiderCore.spider.updateLinkState(crawled_info['url'], 'crawled_finish');
-
-        if ('crawl_finish_alert' in spiderCore.spider_extend) await spiderCore.spider_extend.crawl_finish_alert(crawled_info);
-
-        if (extracted_info) {
-          if (extracted_info['gc']) extracted_info = null; // FGC
-          else extracted_info['gc'] = true;
-        }
-      } else {
-        spiderCore.logger.error(util.format('invalidate content %s', crawled_info['url']));
-
-        crawled_info['origin']['void_proxy'] = crawled_info['remote_proxy'];
-
-        spiderCore.spider.retryCrawl(Util.clone(crawled_info['origin']));
+      } catch (err) {
+        spiderCore.logger.error('spiderCore.event.crawled---->', err);
       }
     });
 
     // when downloading is failure
     spiderCore.on('crawling_failure', (urlinfo, err_msg) => {
-      spiderCore.logger.warn(util.format('Crawling failure: %s, reason: %s', urlinfo['url'], err_msg));
+      try {
+        spiderCore.logger.warn(util.format('Crawling failure: %s, reason: %s', urlinfo['url'], err_msg));
 
-      spiderCore.spider.retryCrawl(urlinfo);
+        spiderCore.spider.retryCrawl(urlinfo);
+      } catch (err) {
+        spiderCore.logger.error('spiderCore.event.crawling_failure--->', err);
+      }
     });
 
     // when downloading is break
     spiderCore.on('crawling_break', (urlinfo, err_msg) => {
-      spiderCore.logger.warn(util.format('Crawling break: %s, reason: %s', urlinfo['url'], err_msg));
+      try {
+        spiderCore.logger.warn(util.format('Crawling break: %s, reason: %s', urlinfo['url'], err_msg));
 
-      spiderCore.spider.retryCrawl(urlinfo);
+        spiderCore.spider.retryCrawl(urlinfo);
+      } catch (err) {
+        spiderCore.logger.error('spiderCore.event.crawling_break--->', err);
+      }
     });
 
     // pop a finished url, append a new url
@@ -102,16 +119,20 @@ export default class SpiderCore extends EventEmitter {
 
     // once driller reles loaded
     spiderCore.once('driller_rules_loaded', () => {
-      if (this.checkQueueTimer) {
-        clearInterval(this.checkQueueTimer);
-        this.checkQueueTimer = null;
-      }
-      const spiderIns = this.spider;
+      try {
+        if (this.checkQueueTimer) {
+          clearInterval(this.checkQueueTimer);
+          this.checkQueueTimer = null;
+        }
+        const spider = this.spider;
 
-      const checkQueueTimer = setInterval(() => {
-        spiderIns.checkQueue(spiderIns);
-      }, spiderCore.settings['spider_request_delay'] * 1000 + 10);
-      this.checkQueueTimer = checkQueueTimer;
+        const checkQueueTimer = setInterval(() => {
+          spider.checkQueue();
+        }, spiderCore.settings['spider_request_delay'] * 1000 + 10);
+        this.checkQueueTimer = checkQueueTimer;
+      } catch (err) {
+        spiderCore.logger.error('spiderCore.event.driller_rules_loaded---->', err);
+      }
     });
 
     // trigger
